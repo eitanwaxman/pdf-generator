@@ -15,8 +15,8 @@ app.post('/', async (req, res) => {
     try {
         const PDF = await exportWebsiteAsPdf(url);
         console.log("PDF", PDF)
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="sample.pdf"');
+        // res.setHeader('Content-Type', 'application/pdf');
+        // res.setHeader('Content-Disposition', 'attachment; filename="sample.pdf"');
         res.send(PDF);
     } catch (error) {
         console.log("error", error);
