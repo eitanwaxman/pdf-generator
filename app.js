@@ -4,8 +4,8 @@ const puppeteer = require('puppeteer');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json()); // for parsing application/json
-app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Define a simple route
 app.post('/', async (req, res) => {
@@ -15,8 +15,6 @@ app.post('/', async (req, res) => {
     try {
         const PDF = await exportWebsiteAsPdf(url);
         console.log("PDF", PDF)
-        // res.setHeader('Content-Type', 'application/pdf');
-        // res.setHeader('Content-Disposition', 'attachment; filename="sample.pdf"');
         res.send(PDF);
     } catch (error) {
         console.log("error", error);
@@ -45,6 +43,9 @@ async function exportWebsiteAsPdf(websiteUrl, outputPath) {
     // Open URL in current page
     await page.goto(websiteUrl, { waitUntil: 'networkidle0' });
 
+    await page.waitForNavigation({
+        waitUntil: 'networkidle0',
+    });
     // To reflect CSS used for screens instead of print
     await page.emulateMediaType('screen');
 
