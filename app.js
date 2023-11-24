@@ -43,9 +43,8 @@ async function exportWebsiteAsPdf(websiteUrl, outputPath) {
     // Open URL in current page
     await page.goto(websiteUrl, { waitUntil: 'networkidle0' });
 
-    await page.waitForNavigation({
-        waitUntil: 'networkidle0',
-    });
+    await timeout(2000);
+
     // To reflect CSS used for screens instead of print
     await page.emulateMediaType('screen');
 
@@ -61,4 +60,8 @@ async function exportWebsiteAsPdf(websiteUrl, outputPath) {
     await browser.close();
 
     return PDF;
+}
+
+async function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
