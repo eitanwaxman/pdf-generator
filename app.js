@@ -41,7 +41,7 @@ async function exportWebsiteAsPdf(websiteUrl, outputPath) {
     const page = await browser.newPage();
 
     // Open URL in current page
-    await page.goto(websiteUrl, { waitUntil: 'networkidle0' });
+    await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
     await timeout(2000);
 
