@@ -7,13 +7,13 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Define a simple route
 app.post('/', async (req, res) => {
     console.log(req.body);
-    const { url } = req.body;
+    const { url, margin } = req.body;
     console.log("url", url)
     try {
-        const PDF = await exportWebsiteAsPdf(url);
+        const options = {margin};
+        const PDF = await exportWebsiteAsPdf(url, options);
         console.log("PDF", PDF)
         res.send(PDF);
     } catch (error) {
@@ -23,7 +23,6 @@ app.post('/', async (req, res) => {
 
 });
 
-// Start the server
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
@@ -31,32 +30,28 @@ app.listen(port, () => {
 
 
 
-async function exportWebsiteAsPdf(websiteUrl, outputPath) {
-    // Create a browser instance
+async function exportWebsiteAsPdf(websiteUrl, options) {
+
+    const {margin} = options;
+
     const browser = await puppeteer.launch({
         headless: 'new'
     });
 
-    // Create a new page
     const page = await browser.newPage();
 
-    // Open URL in current page
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
     await timeout(2000);
 
-    // To reflect CSS used for screens instead of print
     await page.emulateMediaType('screen');
 
-    // Download the PDF
     const PDF = await page.pdf({
-        // path: outputPath,
-        margin: { top: '100px', right: '50px', bottom: '100px', left: '50px' },
+        margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
         printBackground: true,
         format: 'A4',
     });
 
-    // Close the browser instance
     await browser.close();
 
     return PDF;
