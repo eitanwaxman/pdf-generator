@@ -32,7 +32,7 @@ app.listen(port, () => {
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
 
-    const { margin } = options;
+    const { margin, free } = options;
 
     const browser = await puppeteer.launch({
         headless: 'new'
@@ -46,9 +46,10 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.emulateMediaType('screen');
 
-    if (options?.free) {
+    if (free) {
         await page.evaluate(() => {
             const uppermostElement = document.body.children[0];
+            console.log("uppermost Element", uppermostElement);
             const watermark = document.createElement('div');
             watermark.innerHTML = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
             watermark.style.width = '100%';
@@ -57,6 +58,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
             watermark.style.marginTop = '20px';
             watermark.style.fontSize = '12px';
             watermark.style.fontFamily = 'Arial';
+            console.log("watermark", watermark);
             document.body.insertBefore(watermark, uppermostElement);
         })
     }
