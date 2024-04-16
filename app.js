@@ -47,7 +47,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     if (free) {
         await page.evaluate(() => {
             const wixAds = document.getElementById('WIX_ADS');
-            wixAds.remove();
+            if(wixAds) wixAds.remove();
             const uppermostElement = document.body.children[0];
             const watermark = document.createElement('div');
 
