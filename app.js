@@ -53,8 +53,10 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
             const watermarkLink = document.createElement('a');
             watermarkLink.href = 'https://thewixwiz.com/wix-apps'; 
+            watermarkLink.target = '_blank';
             watermarkLink.textContent = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
             watermarkLink.style.color = 'inherit'; 
+            watermarkLink.style.fontSize = '16px';
             watermarkLink.style.textDecoration = 'none';
             watermark.appendChild(watermarkLink);
             
@@ -62,7 +64,6 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
             watermark.style.textAlign = 'center';
             watermark.style.opacity = '0.7';
             watermark.style.marginTop = '20px';
-            watermark.style.fontSize = '14px';
             watermark.style.fontFamily = 'Arial';
             watermark.style.zIndex = '1000';
             document.body.insertBefore(watermark, uppermostElement);
