@@ -50,21 +50,20 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
             console.log(`${i}: ${msg.args()[i]}`);
     });
 
-    console.log("free", free);
     if (free) {
         await page.evaluate(() => {
+            const wixAds = document.getElementById('WIX_ADS');
+            wixAds.remove();
             const uppermostElement = document.body.children[0];
-            console.log("uppermost Element", uppermostElement);
             const watermark = document.createElement('div');
             watermark.innerHTML = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
             watermark.style.width = '100%';
             watermark.style.textAlign = 'center';
             watermark.style.opacity = '0.7';
             watermark.style.marginTop = '20px';
-            watermark.style.fontSize = '100px';
+            watermark.style.fontSize = '12px';
             watermark.style.fontFamily = 'Arial';
             watermark.style.zIndex = '1000';
-            console.log("watermark", watermark);
             document.body.insertBefore(watermark, uppermostElement);
         })
     }
