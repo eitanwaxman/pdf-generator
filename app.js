@@ -12,7 +12,7 @@ app.post('/', async (req, res) => {
     const { url, margin } = req.body;
     console.log("url", url)
     try {
-        const options = {margin};
+        const options = { margin };
         const PDF = await exportWebsiteAsPdf(url, options);
         console.log("PDF", PDF)
         res.send(PDF);
@@ -32,7 +32,7 @@ app.listen(port, () => {
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
 
-    const {margin} = options;
+    const { margin } = options;
 
     const browser = await puppeteer.launch({
         headless: 'new'
@@ -45,6 +45,21 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await timeout(2000);
 
     await page.emulateMediaType('screen');
+
+    if (options?.free) {
+        await page.evaluate(() => {
+            const uppermostElement = document.body.children[0];
+            const watermark = document.createElement('div');
+            watermark.innerHTML = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
+            watermark.style.width = '100%';
+            watermark.style.textAlign = 'center';
+            watermark.style.opacity = '0.7';
+            watermark.style.marginTop = '20px';
+            watermark.style.fontSize = '12px';
+            watermark.style.fontFamily = 'Arial';
+            document.body.insertBefore(watermark, uppermostElement);
+        })
+    }
 
     const PDF = await page.pdf({
         margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
