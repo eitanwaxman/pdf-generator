@@ -51,8 +51,8 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
           console.log(`${i}: ${msg.args()[i]}`);
       });
 
+    console.log("free", free);
     if (free) {
-        console.log("free");
         await page.evaluate(() => {
             const uppermostElement = document.body.children[0];
             console.log("uppermost Element", uppermostElement);
