@@ -9,10 +9,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.post('/', async (req, res) => {
     console.log(req.body);
-    const { url, margin } = req.body;
+    const { url, options } = req.body;
     console.log("url", url)
     try {
-        const options = { margin };
         const PDF = await exportWebsiteAsPdf(url, options);
         console.log("PDF", PDF)
         res.send(PDF);
@@ -48,14 +47,12 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     page.on('console', msg => {
         for (let i = 0; i < msg.args().length; ++i)
-          console.log(`${i}: ${msg.args()[i]}`);
-      });
+            console.log(`${i}: ${msg.args()[i]}`);
+    });
 
-    console.log("free", free);
     if (free) {
         await page.evaluate(() => {
             const uppermostElement = document.body.children[0];
-            console.log("uppermost Element", uppermostElement);
             const watermark = document.createElement('div');
             watermark.innerHTML = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
             watermark.style.width = '100%';
@@ -64,7 +61,6 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
             watermark.style.marginTop = '20px';
             watermark.style.fontSize = '12px';
             watermark.style.fontFamily = 'Arial';
-            console.log("watermark", watermark);
             document.body.insertBefore(watermark, uppermostElement);
         })
     }
