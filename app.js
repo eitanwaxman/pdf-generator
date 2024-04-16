@@ -46,7 +46,13 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.emulateMediaType('screen');
 
+    page.on('console', msg => {
+        for (let i = 0; i < msg.args().length; ++i)
+          console.log(`${i}: ${msg.args()[i]}`);
+      });
+
     if (free) {
+        console.log("free");
         await page.evaluate(() => {
             const uppermostElement = document.body.children[0];
             console.log("uppermost Element", uppermostElement);
