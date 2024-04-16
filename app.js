@@ -61,8 +61,9 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
             watermark.style.textAlign = 'center';
             watermark.style.opacity = '0.7';
             watermark.style.marginTop = '20px';
-            watermark.style.fontSize = '12px';
+            watermark.style.fontSize = '100px';
             watermark.style.fontFamily = 'Arial';
+            watermark.style.zIndex = '1000';
             console.log("watermark", watermark);
             document.body.insertBefore(watermark, uppermostElement);
         })
