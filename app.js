@@ -30,7 +30,7 @@ app.listen(port, () => {
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
 
-    const { margin, free } = options;
+    const { margin, free } = options || {};
 
     const browser = await puppeteer.launch({
         headless: 'new'
