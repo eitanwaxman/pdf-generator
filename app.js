@@ -10,13 +10,16 @@ app.use(express.urlencoded({ extended: true }));
 app.post('/', async (req, res) => {
     console.log(req.body);
     const { url, options } = req.body;
+
+    if (!url) return res.status(400).send('URL is required');
+
     try {
         const PDF = await exportWebsiteAsPdf(url, options);
         console.log("PDF", PDF)
         res.send(PDF);
     } catch (error) {
         console.log("error", error);
-        res.send('Error');
+        res.status(500).send('Internal Server Error')
     }
 
 });
@@ -47,19 +50,19 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     if (free) {
         await page.evaluate(() => {
             const wixAds = document.getElementById('WIX_ADS');
-            if(wixAds) wixAds.remove();
+            if (wixAds) wixAds.remove();
             const uppermostElement = document.body.children[0];
             const watermark = document.createElement('div');
 
             const watermarkLink = document.createElement('a');
-            watermarkLink.href = 'https://thewixwiz.com/wix-apps'; 
+            watermarkLink.href = 'https://thewixwiz.com/wix-apps';
             watermarkLink.target = '_blank';
             watermarkLink.textContent = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
-            watermarkLink.style.color = 'inherit'; 
+            watermarkLink.style.color = 'inherit';
             watermarkLink.style.fontSize = '16px';
             watermarkLink.style.textDecoration = 'none';
             watermark.appendChild(watermarkLink);
-            
+
             watermark.style.width = '100%';
             watermark.style.textAlign = 'center';
             watermark.style.opacity = '0.7';
