@@ -1,5 +1,5 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+//const bodyParser = require('body-parser');
 const puppeteer = require('puppeteer');
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,7 +15,6 @@ app.post('/', async (req, res) => {
 
     try {
         const PDF = await exportWebsiteAsPdf(url, options);
-        console.log("PDF", PDF)
         res.send(PDF);
     } catch (error) {
         console.log("error", error);
@@ -33,7 +32,7 @@ app.listen(port, () => {
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
 
-    const { margin, free } = options || {};
+    const { margin, free, delay } = options || {};
 
     const browser = await puppeteer.launch({
         headless: 'new'
@@ -43,7 +42,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
-    await timeout(2000);
+    await timeout(delay || 2000);
 
     await page.emulateMediaType('screen');
 
