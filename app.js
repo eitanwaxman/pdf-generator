@@ -2,9 +2,17 @@
 
 const express = require('express');
 const puppeteer = require('puppeteer');
+const multer = require('multer');
+const fs = require('fs');
+const { uuidv4 } = require('uuid');
+const cors = require('cors');
+const path = require('path');
+
+
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -77,15 +85,32 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
         })
     }
 
-    const PDF = await page.pdf({
+    const pdfBuffer = await page.pdf({
         margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
         printBackground: true,
         format: 'A4',
     });
 
+    const filename = `${uuidv4()}.pdf`;
+    const filePath = path.join(__dirname, 'temp', filename);
+
+    fs.writeFileSync(filePath, pdfBuffer);
+
+    const fileUrl = `https://audio-recorder-f15q.onrender.com/temp/${filename}`;
+    console.log("fileUrl", fileUrl);
+    res.json({ fileUrl });
+
+    setTimeout(() => {
+        fs.unlinkSync(filePath);
+        console.log(`File ${filename} removed.`);
+    }, 60000);
+
     await browser.close();
 
-    return PDF;
+    return {
+        buffer: pdfBuffer,
+        url: fileUrl,
+    };
 }
 
 async function timeout(ms) {
