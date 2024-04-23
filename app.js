@@ -1,5 +1,6 @@
+//TODO - repond with a temp file url as well (option)
+
 const express = require('express');
-//const bodyParser = require('body-parser');
 const puppeteer = require('puppeteer');
 const app = express();
 const port = process.env.PORT || 3000;
@@ -42,7 +43,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
-    await timeout(delay || 2000);
+    await timeout((delay && delay <= 10000) ? delay : 2000);
 
     await page.emulateMediaType('screen');
 
