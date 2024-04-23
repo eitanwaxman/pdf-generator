@@ -9,7 +9,7 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const SERVER_URL = "https://pdf-generator-dev.onrender.com"
+const SERVER_URL = "https://pdf-generator-new.onrender.com" //"https://pdf-generator-dev.onrender.com"
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
