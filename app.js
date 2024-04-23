@@ -2,19 +2,17 @@
 
 const express = require('express');
 const puppeteer = require('puppeteer');
-const multer = require('multer');
 const fs = require('fs');
 const { uuidv4 } = require('uuid');
-const cors = require('cors');
 const path = require('path');
 
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/temp', express.static('temp'));
 
 app.post('/', async (req, res) => {
     console.log(req.body);
@@ -98,7 +96,6 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     const fileUrl = `https://audio-recorder-f15q.onrender.com/temp/${filename}`;
     console.log("fileUrl", fileUrl);
-    res.json({ fileUrl });
 
     setTimeout(() => {
         fs.unlinkSync(filePath);
