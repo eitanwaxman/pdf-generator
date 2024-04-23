@@ -9,6 +9,7 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const SERVER_URL = "https://pdf-generator-dev.onrender.com"
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -94,7 +95,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     fs.writeFileSync(filePath, pdfBuffer);
 
-    const fileUrl = `https://audio-recorder-f15q.onrender.com/temp/${filename}`;
+    const fileUrl = `${SERVER_URL}/temp/${filename}`;
     console.log("fileUrl", fileUrl);
 
     setTimeout(() => {
