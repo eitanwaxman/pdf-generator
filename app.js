@@ -105,10 +105,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await browser.close();
 
-    return {
-        buffer: pdfBuffer,
-        url: fileUrl,
-    };
+    return pdfBuffer;
 }
 
 async function timeout(ms) {
