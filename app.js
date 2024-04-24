@@ -19,7 +19,7 @@ app.post('/', async (req, res) => {
     console.log(req.body);
     const { url, options } = req.body;
 
-    if (!url) return res.status(400).send('URL is required');
+    if (!isValidUrl(url)) return res.status(400).send('Vaild URL is required');
 
     try {
         const PDF = await exportWebsiteAsPdf(url, options);
@@ -116,4 +116,9 @@ function storeTemporaryUrl(pdfBuffer) {
 
 async function timeout(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isValidUrl(url) {
+    var urlPattern = /^(?:https?|ftp):\/\/[\w/\-?=%.]+\.[\w/\-?=%.]+$/;
+    return urlPattern.test(url);
 }
