@@ -119,6 +119,6 @@ async function timeout(ms) {
 }
 
 function isValidUrl(url) {
-    var urlPattern = /^(?:https?|ftp):\/\/[\w/\-?=%.]+\.[\w/\-?=%.]+$/;
+    var urlPattern = /^(http(s):\/\/.)[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$/;
     return urlPattern.test(url);
 }
