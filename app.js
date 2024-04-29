@@ -52,6 +52,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.evaluate(() => {
         window.scrollBy(0, window.innerHeight);
+        timeout(1000);
     });
 
     await timeout((delay && delay <= 10000) ? delay : 2000);
