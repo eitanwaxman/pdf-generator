@@ -51,7 +51,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
     await page.evaluate(() => {
-        window.scrollBy(0, window.innerHeight);
+        window.scrollBy(0, document.body.scrollHeight);
     });
 
     await timeout((delay && delay <= 10000) ? delay : 2000);
