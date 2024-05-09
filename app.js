@@ -39,7 +39,6 @@ app.listen(port, () => {
 
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
-
     const { margin, free, delay } = options || {};
 
     const browser = await puppeteer.launch({
@@ -58,9 +57,9 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.emulateMediaType('screen');
 
-    if (free) {
-        await page.evaluate(addWatermark);
-    }
+    // if (free) {
+    //     await page.evaluate(addWatermark);
+    // }
 
     const pdfBuffer = await page.pdf({
         margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
