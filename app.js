@@ -55,12 +55,6 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await timeout((delay && delay <= 10000) ? delay : 2000);
 
-    await page.emulateMediaType('screen');
-
-    if (free) {
-        await page.evaluate(addWatermark);
-    }
-
     if (waitForDataLoad) {
         await new Promise((resolve) => {
             page.on('console', (msg) => {
@@ -72,6 +66,13 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
         });
 
         console.log("data has loaded");
+    }
+
+
+    await page.emulateMediaType('screen');
+
+    if (free) {
+        await page.evaluate(addWatermark);
     }
 
     const pdfBuffer = await page.pdf({
