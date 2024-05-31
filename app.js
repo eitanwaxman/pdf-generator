@@ -39,7 +39,7 @@ app.listen(port, () => {
 
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
-    const { margin, free, delay } = options || {};
+    const { margin, free, delay, waitForDataLoad } = options || {};
 
     const browser = await puppeteer.launch({
         headless: 'new'
@@ -59,6 +59,19 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     if (free) {
         await page.evaluate(addWatermark);
+    }
+
+    if (waitForDataLoad) {
+        await new Promise((resolve) => {
+            page.on('console', (msg) => {
+                console.log(msg, msg.text())
+                if (msg.text() === "dataloaded") {
+                    resolve();
+                }
+            });
+        });
+
+        console.log("data has loaded");
     }
 
     const pdfBuffer = await page.pdf({
