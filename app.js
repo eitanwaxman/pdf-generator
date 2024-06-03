@@ -56,7 +56,15 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await timeout((delay && delay <= 10000) ? delay : 2000);
 
     if (waitForDataLoad) {
-        await page.waitForSelector('#loadedIndicator', { timeout: 60000 });
+        const iframe = await page.waitForSelector('iframe');
+        console.log("iframe", iframe);
+        const frame = await iframe.contentFrame();
+
+        if (frame) {
+            await frame.waitForSelector("#loadedIndicator", { timeout: 60000 });
+        } else {
+            throw new Error('Could not find iframe content');
+        }
     }
 
 
