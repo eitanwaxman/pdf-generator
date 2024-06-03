@@ -49,19 +49,6 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
-    if (waitForDataLoad) {
-        await new Promise((resolve) => {
-            page.on('console', (msg) => {
-                console.log(msg, msg.text())
-                if (msg.text() === "dataloaded") {
-                    resolve();
-                }
-            });
-        });
-
-        console.log("data has loaded");
-    }
-
     await page.evaluate(() => {
         window.scrollBy(0, document.body.scrollHeight);
     });
@@ -69,12 +56,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await timeout((delay && delay <= 10000) ? delay : 2000);
 
     if (waitForDataLoad) {
-        page.on('console', async e => {
-            const args = await Promise.all(e.args().map(a => a.jsonValue()));
-            console.log("args", ...args);
-        });
-
-        console.log("data has loaded");
+        await page.waitForSelector('#loadingIndicator', { timeout: 60000 });
     }
 
 
