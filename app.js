@@ -56,7 +56,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await timeout((delay && delay <= 10000) ? delay : 2000);
 
     if (waitForDataLoad) {
-        await page.waitForSelector('#loadingIndicator', { timeout: 60000 });
+        await page.waitForSelector('#loadedIndicator', { timeout: 60000 });
     }
 
 
