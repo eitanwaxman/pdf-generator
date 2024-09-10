@@ -9,7 +9,7 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const SERVER_URL = "https://pdf-generator-new.onrender.com" //"https://pdf-generator-dev.onrender.com"
+const SERVER_URL = "https://pdf-generator-dev.onrender.com" //"https://pdf-generator-new.onrender.com"
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -40,11 +40,13 @@ let browser;
 async function exportWebsiteAsPdf(websiteUrl, options) {
     const { margin, free, delay, waitForDataLoad } = options || {};
 
-    const browser = await puppeteer.launch({
-        headless: 'new'
-    });
+    // const browser = await puppeteer.launch({
+    //     headless: 'new'
+    // });
 
-    const page = await getBrowser();//browser.newPage();
+    const browser = await getBrowser();
+
+    const page = browser.newPage();
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
@@ -55,7 +57,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await timeout((delay && delay <= 10000) ? delay : 2000);
 
     if (waitForDataLoad) {
-        const iframe = await page.waitForSelector('iframe');
+        const iframe = await page.waitForSelector('iframe', { timeout: 60000 });
         const frame = await iframe.contentFrame();
 
         if (frame) {
