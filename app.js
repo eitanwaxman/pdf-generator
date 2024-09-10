@@ -45,8 +45,10 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     // });
 
     const browser = await getBrowser();
+    console.log("browser", browser);
 
     const page = browser.newPage();
+    console.log("page", page);
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
