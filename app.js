@@ -35,8 +35,7 @@ app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
 
-
-
+let browser;
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
     const { margin, free, delay, waitForDataLoad } = options || {};
@@ -45,7 +44,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
         headless: 'new'
     });
 
-    const page = await browser.newPage();
+    const page = await getBrowser();//browser.newPage();
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
@@ -57,7 +56,6 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     if (waitForDataLoad) {
         const iframe = await page.waitForSelector('iframe');
-        console.log("iframe", iframe);
         const frame = await iframe.contentFrame();
 
         if (frame) {
@@ -133,4 +131,16 @@ async function timeout(ms) {
 function isValidUrl(url) {
     var urlPattern = /^(http(s):\/\/.)[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$/;
     return urlPattern.test(url);
+}
+
+async function getBrowser() {
+    if (!browser) {
+        browser = await puppeteer.launch({ headless: 'new' });
+        process.on('exit', async () => {
+            if (browser) {
+                await browser.close();
+            }
+        });
+    }
+    return browser;
 }
