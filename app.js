@@ -84,7 +84,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     storeTemporaryUrl(pdfBuffer);
 
-    await browser.close();
+    await page.close(); //browser.close();
 
     return pdfBuffer;
 }
