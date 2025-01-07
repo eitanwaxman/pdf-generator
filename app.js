@@ -72,6 +72,9 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.emulateMediaType('screen');
 
+    await page.evaluate(removeWixAds);
+    await page.evaluate(removeCookieBanner);
+
     if (free) {
         await page.evaluate(addWatermark);
     }
@@ -89,9 +92,17 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     return pdfBuffer;
 }
 
-function addWatermark() {
+function removeWixAds() {
     const wixAds = document.getElementById('WIX_ADS');
     if (wixAds) wixAds.remove();
+}
+
+function removeCookieBanner(){
+    const cookieBanner = document.querySelector('.consent-banner-root');
+    if(cookieBanner) cookieBanner.remove();
+}
+
+function addWatermark() {
     const uppermostElement = document.body.children[0];
     const watermark = document.createElement('div');
 
