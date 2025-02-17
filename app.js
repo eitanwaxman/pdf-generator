@@ -38,7 +38,7 @@ app.listen(port, () => {
 let browser;
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
-    const { margin, free, delay, waitForDataLoad } = options || {};
+    const { margin, format, free, delay, waitForDataLoad } = options || {};
 
     // const browser = await puppeteer.launch({
     //     headless: 'new'
@@ -82,7 +82,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     const pdfBuffer = await page.pdf({
         margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
         printBackground: true,
-        format: 'A4',
+        format: format || 'A4',
     });
 
     storeTemporaryUrl(pdfBuffer);
@@ -97,9 +97,9 @@ function removeWixAds() {
     if (wixAds) wixAds.remove();
 }
 
-function removeCookieBanner(){
+function removeCookieBanner() {
     const cookieBanner = document.querySelector('.consent-banner-root');
-    if(cookieBanner) cookieBanner.remove();
+    if (cookieBanner) cookieBanner.remove();
 }
 
 function addWatermark() {
