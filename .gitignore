@@ -9,12 +9,19 @@
 # Ignore log and temporary files
 log/
 tmp/
+temp/
 *.log
 *.tmp
 
 # Ignore dependency directories
 node_modules/
 vendor/
+
+# Ignore Puppeteer and Chrome caches
+.cache/
+**/.cache/
+*.chrome-user-data
+puppeteer-cache/
 
 # Ignore specific files
 config.ini
