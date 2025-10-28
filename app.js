@@ -64,10 +64,57 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
     console.log(`[${new Date().toISOString()}] Navigation complete: ${websiteUrl}`);
 
+    // Wait for images to load - progressively scroll and wait for network idle
+    console.log(`[PDF Service] Waiting for images and lazy-loaded content`);
+    const networkIdleStartTime = Date.now();
+
+    const scrollHeight = await page.evaluate(() => document.body.scrollHeight);
+    let currentScrollPosition = 0;
+    const scrollIncrement = 200;
+
+    console.log(`[PDF Service] Page scroll height: ${scrollHeight}px`);
+
+    while (currentScrollPosition < scrollHeight) {
+        const previousPosition = currentScrollPosition;
+        currentScrollPosition = Math.min(currentScrollPosition + scrollIncrement, scrollHeight);
+
+        console.log(`[PDF Service] Scrolling from ${previousPosition}px to ${currentScrollPosition}px`);
+
+        await page.evaluate((scrollTo) => {
+            window.scrollTo(0, scrollTo);
+        }, currentScrollPosition);
+
+        // Wait for network to be idle after scrolling
+        try {
+            await page.waitForNetworkIdle({
+                idleTime: 500,      // Wait 500ms with no requests
+                timeout: 3000       // Max 3 seconds per scroll
+            });
+            console.log(`[PDF Service] Network idle at ${currentScrollPosition}px`);
+        } catch (error) {
+            console.log(`[PDF Service] Network idle timeout at ${currentScrollPosition}px, continuing`);
+        }
+    }
+
+    // Final scroll to bottom to catch any remaining content
+    console.log(`[PDF Service] Final scroll to bottom`);
     await page.evaluate(() => {
-        window.scrollBy(0, document.body.scrollHeight);
+        window.scrollTo(0, document.body.scrollHeight);
     });
-    console.log(`[${new Date().toISOString()}] Scrolled to bottom of page.`);
+
+    try {
+        await page.waitForNetworkIdle({
+            idleTime: 500,
+            timeout: 3000
+        });
+        console.log(`[PDF Service] Network idle at bottom`);
+    } catch (error) {
+        console.log(`[PDF Service] Network idle timeout at bottom`);
+    }
+
+    const networkIdleEndTime = Date.now();
+    console.log(`[PDF Service] Progressive scroll completed - duration: ${networkIdleEndTime - networkIdleStartTime}ms`);
+
 
     const waitMs = (delay && delay <= 10000) ? delay : 2000;
     console.log(`[${new Date().toISOString()}] Waiting for ${waitMs}ms`);
