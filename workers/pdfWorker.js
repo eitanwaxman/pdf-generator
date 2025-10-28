@@ -1,6 +1,7 @@
 const { Worker } = require('bullmq');
 const { createBullMQConnection } = require('../config/redis');
-const { generatePdf, isValidUrl } = require('../services/pdfService');
+const { generatePdf } = require('../services/pdfService');
+const { isValidUrl } = require('../config/validators');
 const { SIZE, RESPONSE_TYPES, RESULT_TYPES, WORKER_CONCURRENCY } = require('../config/constants');
 const fs = require('fs');
 

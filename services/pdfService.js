@@ -2,39 +2,45 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const { isValidUrl: validateUrl, validatePdfOptions } = require('../config/validators');
-const { TIME, DEFAULT_MARGIN, PDF_FORMATS, WATERMARK, SIZE, PLATFORMS } = require('../config/constants');
+const { validatePdfOptions } = require('../config/validators');
+const { TIME, DEFAULT_MARGIN, PDF_FORMATS, WATERMARK, SIZE, PLATFORMS, PDF_FULL_HEIGHTS, PAGE_LIMITS } = require('../config/constants');
 
 const SERVER_URL = process.env.SERVER_URL || "http://localhost:3000";
 
 let browser;
 
-async function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function isValidUrl(url) {
-    return validateUrl(url);
-}
-
+/**
+ * Remove Wix ads from the page
+ * @returns {void}
+ */
 function removeWixAds() {
     const wixAds = document.getElementById('WIX_ADS');
     if (wixAds) wixAds.remove();
 }
 
+/**
+ * Remove cookie banner from the page
+ * @returns {void}
+ */
 function removeCookieBanner() {
     const cookieBanner = document.querySelector('.consent-banner-root');
     if (cookieBanner) cookieBanner.remove();
 }
 
-function addWatermark() {
+/**
+ * Add watermark to the page
+ * @param {string} watermarkUrl - URL for the watermark link
+ * @param {string} watermarkText - Text to display in the watermark
+ * @returns {void}
+ */
+function addWatermark(watermarkUrl, watermarkText) {
     const uppermostElement = document.body.children[0];
     const watermark = document.createElement('div');
 
     const watermarkLink = document.createElement('a');
-    watermarkLink.href = 'https://thewixwiz.com/wix-apps';
+    watermarkLink.href = watermarkUrl;
     watermarkLink.target = '_blank';
-    watermarkLink.textContent = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
+    watermarkLink.textContent = watermarkText;
     watermarkLink.style.color = 'inherit';
     watermarkLink.style.fontSize = WATERMARK.FONT_SIZE;
     watermarkLink.style.textDecoration = 'none';
@@ -49,6 +55,10 @@ function addWatermark() {
     document.body.insertBefore(watermark, uppermostElement);
 }
 
+/**
+ * Get or create a browser instance
+ * @returns {Promise<Browser>} Puppeteer browser instance
+ */
 async function getBrowser() {
     if (!browser) {
         browser = await puppeteer.launch({ headless: 'new' });
@@ -61,6 +71,99 @@ async function getBrowser() {
     return browser;
 }
 
+/**
+ * Parse margin value to pixels
+ * @param {string} marginValue - Margin value (e.g., "100px", "2cm")
+ * @returns {number} - Margin in pixels
+ */
+function parseMarginToPixels(marginValue) {
+    if (!marginValue) return 0;
+    
+    const match = marginValue.match(/^([\d.]+)(px|cm|mm|in)?$/);
+    if (!match) return 0;
+    
+    const value = parseFloat(match[1]);
+    const unit = match[2] || 'px';
+    
+    // Convert to pixels (96 DPI)
+    const conversions = {
+        'px': 1,
+        'in': 96,
+        'cm': 96 / 2.54,
+        'mm': 96 / 25.4
+    };
+    
+    return value * (conversions[unit] || 1);
+}
+
+/**
+ * Calculate usable page height based on format and margins
+ * @param {string} format - PDF format (e.g., 'A4')
+ * @param {object} margin - Margin object
+ * @returns {number} - Usable height in pixels
+ */
+function calculateUsablePageHeight(format, margin) {
+    const fullHeight = PDF_FULL_HEIGHTS[format] || PDF_FULL_HEIGHTS[PDF_FORMATS.A4];
+    
+    // Get top and bottom margins
+    const topMargin = margin ? parseMarginToPixels(margin.top) : parseMarginToPixels(DEFAULT_MARGIN.top);
+    const bottomMargin = margin ? parseMarginToPixels(margin.bottom) : parseMarginToPixels(DEFAULT_MARGIN.bottom);
+    
+    return fullHeight - topMargin - bottomMargin;
+}
+
+/**
+ * Scroll the page progressively to load lazy-loaded content
+ * @param {Page} page - Puppeteer page instance
+ * @param {number} scrollIncrement - Number of pixels to scroll at a time
+ * @param {number} maxHeight - Maximum height to scroll to (for page limiting)
+ * @returns {Promise<void>}
+ */
+async function scrollPageProgressively(page, scrollIncrement = 200, maxHeight = null) {
+    const scrollHeight = await page.evaluate(() => document.body.scrollHeight);
+    let currentScrollPosition = 0;
+    
+    // Apply max height limit if specified
+    const effectiveScrollHeight = maxHeight ? Math.min(scrollHeight, maxHeight) : scrollHeight;
+    
+    while (currentScrollPosition < effectiveScrollHeight) {
+        currentScrollPosition = Math.min(currentScrollPosition + scrollIncrement, effectiveScrollHeight);
+        
+        await page.evaluate((scrollTo) => {
+            window.scrollTo(0, scrollTo);
+        }, currentScrollPosition);
+        
+        // Wait for network to be idle after scrolling
+        try {
+            await page.waitForNetworkIdle({
+                idleTime: TIME.NETWORK_IDLE_TIME,
+                timeout: TIME.NETWORK_IDLE_TIMEOUT
+            });
+        } catch (error) {
+            // Continue if network idle times out
+        }
+    }
+    
+    // Final scroll to bottom (or max height) to catch any remaining content
+    await page.evaluate((finalHeight) => {
+        window.scrollTo(0, finalHeight);
+    }, effectiveScrollHeight);
+    
+    try {
+        await page.waitForNetworkIdle({
+            idleTime: TIME.NETWORK_IDLE_TIME,
+            timeout: TIME.NETWORK_IDLE_TIMEOUT
+        });
+    } catch (error) {
+        // Continue if network idle times out
+    }
+}
+
+/**
+ * Store PDF buffer as a temporary file and return URL
+ * @param {Buffer} pdfBuffer - PDF buffer to store
+ * @returns {string} URL to access the temporary file
+ */
 function storeTemporaryUrl(pdfBuffer) {
     const filename = `${uuidv4()}.pdf`;
     const filePath = path.join(__dirname, '..', 'temp', filename);
@@ -73,7 +176,7 @@ function storeTemporaryUrl(pdfBuffer) {
         try {
             fs.unlinkSync(filePath);
         } catch (err) {
-            // Error removing file
+            console.error(`[PDF Service] Error removing temp file: ${err.message}`);
         }
     }, TIME.TEMP_FILE_TTL);
 
@@ -89,9 +192,6 @@ function storeTemporaryUrl(pdfBuffer) {
  * @returns {object} - { pdfBuffer, fileUrl? }
  */
 async function generatePdf({ url, pdfOptions, account }) {
-    const totalStartTime = Date.now();
-    console.log(`[PDF Service] ========== Starting PDF generation for ${url} ==========`);
-    
     // Validate PDF options
     const validation = validatePdfOptions(pdfOptions);
     if (!validation.valid) {
@@ -99,32 +199,57 @@ async function generatePdf({ url, pdfOptions, account }) {
     }
 
     const { margin, format, platform } = pdfOptions || {};
+    const pdfFormat = format || PDF_FORMATS.A4;
 
     // Determine if watermark should be added based on account tier
     const addWatermarkForAccount = account && account.tier === 'free';
 
+    // Get actual margins to use
+    const actualMargin = margin || DEFAULT_MARGIN;
+    
+    // Calculate page limit based on account tier
+    const pageLimit = account && account.tier === 'paid' ? PAGE_LIMITS.PAID_TIER : PAGE_LIMITS.FREE_TIER;
+    
+    // Calculate usable page height based on format and margins
+    const pageHeight = calculateUsablePageHeight(pdfFormat, actualMargin);
+    const maxHeight = pageLimit * pageHeight;
+
     const browser = await getBrowser();
 
     const page = await browser.newPage();
-    
-    // Listen to console messages from the page
-    page.on('console', msg => {
-        console.log(`[Browser] ${msg.text()}`);
-    });
 
     try {
-        // Measure time between page.goto and network idle
-        const gotoStartTime = Date.now();
-        console.log(`[PDF Service] Starting navigation to ${url}`);
+        await page.goto(url, { waitUntil: 'networkidle0', timeout: TIME.PAGE_NAVIGATION_TIMEOUT });
 
-        await page.goto(url, { waitUntil: 'networkidle0', timeout: 0 });
+        // Wait for images to load - progressively scroll and wait for network idle
+        // Apply maxHeight limit based on tier and format
+        await scrollPageProgressively(page, 200, maxHeight);
 
-        const gotoEndTime = Date.now();
-        const navigationDuration = gotoEndTime - gotoStartTime;
-        console.log(`[PDF Service] Page navigation completed - time to network idle: ${navigationDuration}ms`);
+        await page.emulateMediaType('screen');
 
-    } catch (error) {
+        // Apply platform-specific logic
+        if (platform === PLATFORMS.WIX) {
+            await page.evaluate(removeWixAds);
+            await page.evaluate(removeCookieBanner);
+        }
+
+        // Add watermark for free accounts
+        if (addWatermarkForAccount) {
+            await page.evaluate(addWatermark, WATERMARK.URL, WATERMARK.TEXT);
+        }
+
+        const pdfBuffer = await page.pdf({
+            margin: margin || DEFAULT_MARGIN,
+            printBackground: true,
+            format: format || PDF_FORMATS.A4,
+        });
+
+        const fileUrl = storeTemporaryUrl(pdfBuffer);
+
         await page.close();
+
+        return { pdfBuffer, fileUrl };
+    } catch (error) {
         // Enhance error message with URL context for better debugging
         if (error.message.includes('ERR_NAME_NOT_RESOLVED')) {
             throw new Error(`Cannot resolve DNS for: ${url}. The domain may not exist or the DNS cannot be reached.`);
@@ -133,118 +258,16 @@ async function generatePdf({ url, pdfOptions, account }) {
         } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
             throw new Error(`Connection to ${url} was refused. The server may be down or blocking requests.`);
         }
-        throw new Error(`Failed to load ${url}: ${error.message}`);
-    }
-
-    // Wait for images to load - progressively scroll and wait for network idle
-    console.log(`[PDF Service] Waiting for images and lazy-loaded content`);
-    const networkIdleStartTime = Date.now();
-    
-    const scrollHeight = await page.evaluate(() => document.body.scrollHeight);
-    let currentScrollPosition = 0;
-    const scrollIncrement = 200;
-    
-    console.log(`[PDF Service] Page scroll height: ${scrollHeight}px`);
-    
-    while (currentScrollPosition < scrollHeight) {
-        const previousPosition = currentScrollPosition;
-        currentScrollPosition = Math.min(currentScrollPosition + scrollIncrement, scrollHeight);
-        
-        console.log(`[PDF Service] Scrolling from ${previousPosition}px to ${currentScrollPosition}px`);
-        
-        await page.evaluate((scrollTo) => {
-            window.scrollTo(0, scrollTo);
-        }, currentScrollPosition);
-        
-        // Wait for network to be idle after scrolling
+        throw new Error(`Failed to generate PDF for ${url}: ${error.message}`);
+    } finally {
         try {
-            await page.waitForNetworkIdle({
-                idleTime: 500,      // Wait 500ms with no requests
-                timeout: 3000       // Max 3 seconds per scroll
-            });
-            console.log(`[PDF Service] Network idle at ${currentScrollPosition}px`);
-        } catch (error) {
-            console.log(`[PDF Service] Network idle timeout at ${currentScrollPosition}px, continuing`);
+            await page.close();
+        } catch (closeError) {
+            console.error(`[PDF Service] Error closing page: ${closeError.message}`);
         }
     }
-    
-    // Final scroll to bottom to catch any remaining content
-    console.log(`[PDF Service] Final scroll to bottom`);
-    await page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-    });
-    
-    try {
-        await page.waitForNetworkIdle({
-            idleTime: 500,
-            timeout: 3000
-        });
-        console.log(`[PDF Service] Network idle at bottom`);
-    } catch (error) {
-        console.log(`[PDF Service] Network idle timeout at bottom`);
-    }
-    
-    const networkIdleEndTime = Date.now();
-    console.log(`[PDF Service] Progressive scroll completed - duration: ${networkIdleEndTime - networkIdleStartTime}ms`);
-
-    console.log(`[PDF Service] Emulating media type screen`);
-    await page.emulateMediaType('screen');
-
-    // Apply platform-specific logic
-    if (platform === PLATFORMS.WIX) {
-        console.log(`[PDF Service] Applying WIX platform-specific modifications`);
-        const platformStartTime = Date.now();
-        
-        await page.evaluate(removeWixAds);
-        await page.evaluate(removeCookieBanner);
-        
-        const platformEndTime = Date.now();
-        console.log(`[PDF Service] Platform modifications completed - duration: ${platformEndTime - platformStartTime}ms`);
-    }
-
-    // Add watermark for free accounts
-    if (addWatermarkForAccount) {
-        console.log(`[PDF Service] Adding watermark`);
-        const watermarkStartTime = Date.now();
-        
-        await page.evaluate(addWatermark);
-        
-        const watermarkEndTime = Date.now();
-        console.log(`[PDF Service] Watermark added - duration: ${watermarkEndTime - watermarkStartTime}ms`);
-    }
-
-    console.log(`[PDF Service] Starting PDF generation`);
-    const pdfStartTime = Date.now();
-    
-    const pdfBuffer = await page.pdf({
-        margin: margin || DEFAULT_MARGIN,
-        printBackground: true,
-        format: format || PDF_FORMATS.A4,
-    });
-    
-    const pdfEndTime = Date.now();
-    console.log(`[PDF Service] PDF generation completed - duration: ${pdfEndTime - pdfStartTime}ms`);
-
-    console.log(`[PDF Service] Storing temporary file`);
-    const fileStorageStartTime = Date.now();
-    
-    const fileUrl = storeTemporaryUrl(pdfBuffer);
-    
-    const fileStorageEndTime = Date.now();
-    console.log(`[PDF Service] File storage completed - duration: ${fileStorageEndTime - fileStorageStartTime}ms`);
-
-    await page.close();
-
-    const totalEndTime = Date.now();
-    const totalDuration = totalEndTime - totalStartTime;
-    console.log(`[PDF Service] ========== PDF generation completed - total duration: ${totalDuration}ms ==========`);
-
-    return { pdfBuffer, fileUrl };
 }
 
 module.exports = {
-    generatePdf,
-    isValidUrl,
-    timeout
+    generatePdf
 };
-

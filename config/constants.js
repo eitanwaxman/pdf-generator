@@ -55,7 +55,10 @@ const RESULT_TYPES = {
 // Time Constants (in milliseconds)
 const TIME = {
     IFRAME_TIMEOUT: 60000,
-    TEMP_FILE_TTL: 60000
+    TEMP_FILE_TTL: 60000,
+    PAGE_NAVIGATION_TIMEOUT: 30000,
+    NETWORK_IDLE_TIME: 500,
+    NETWORK_IDLE_TIMEOUT: 3000
 };
 
 // Size Constants
@@ -70,6 +73,12 @@ const SIZE = {
 const PRIORITY = {
     FREE_TIER: 1,
     PAID_TIER: 10
+};
+
+// Page Limit Constants
+const PAGE_LIMITS = {
+    FREE_TIER: 1,
+    PAID_TIER: 5
 };
 
 // Queue Constants
@@ -93,7 +102,9 @@ const WATERMARK = {
     WIDTH: '100%',
     OPACITY: '0.7',
     MARGIN_TOP: '20px',
-    Z_INDEX: '1000'
+    Z_INDEX: '1000',
+    URL: 'https://thewixwiz.com/wix-apps',
+    TEXT: 'Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more'
 };
 
 // Default PDF Margin
@@ -102,6 +113,21 @@ const DEFAULT_MARGIN = {
     right: '50px',
     bottom: '100px',
     left: '50px'
+};
+
+// PDF Page Full Heights at 96 DPI (total height in pixels)
+const PDF_FULL_HEIGHTS = {
+    [PDF_FORMATS.LETTER]: 1056,   // 8.5" × 11" at 96 DPI
+    [PDF_FORMATS.LEGAL]: 1270,     // 8.5" × 14" at 96 DPI
+    [PDF_FORMATS.TABLOID]: 1414,   // 11" × 17" at 96 DPI (rotated, so height is longer)
+    [PDF_FORMATS.LEDGER]: 1016,    // 17" × 11" at 96 DPI
+    [PDF_FORMATS.A0]: 3654,         // A0 at 96 DPI
+    [PDF_FORMATS.A1]: 2638,         // A1 at 96 DPI
+    [PDF_FORMATS.A2]: 1928,         // A2 at 96 DPI
+    [PDF_FORMATS.A3]: 1418,         // A3 at 96 DPI
+    [PDF_FORMATS.A4]: 1123,         // A4 at 96 DPI
+    [PDF_FORMATS.A5]: 852,          // A5 at 96 DPI
+    [PDF_FORMATS.A6]: 663           // A6 at 96 DPI
 };
 
 // Concurrency
@@ -122,6 +148,8 @@ module.exports = {
     RATE_LIMIT,
     WATERMARK,
     DEFAULT_MARGIN,
+    PDF_FULL_HEIGHTS,
+    PAGE_LIMITS,
     WORKER_CONCURRENCY
 };
 

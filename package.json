@@ -4,7 +4,12 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --testPathPattern=test/load",
+    "test:load": "jest test/load",
+    "test:load:basic": "jest test/load/basic-load.test.js",
+    "test:load:tier": "jest test/load/tier-mixing.test.js",
+    "test:load:stress": "jest test/load/resource-stress.test.js",
+    "test:load:edge": "jest test/load/edge-cases.test.js"
   },
   "author": "",
   "license": "ISC",
@@ -21,5 +26,9 @@
     "puppeteer": "^22.8.2",
     "redis": "^5.9.0",
     "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "axios": "^1.6.2",
+    "jest": "^29.7.0"
   }
 }

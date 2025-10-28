@@ -1,7 +1,6 @@
 const express = require('express');
 const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
-const { isValidUrl } = require('../../services/pdfService');
-const { validatePdfOptions } = require('../../config/validators');
+const { validatePdfOptions, isValidUrl } = require('../../config/validators');
 const { SIZE } = require('../../config/constants');
 
 const router = express.Router();
