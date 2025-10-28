@@ -56,17 +56,9 @@ const RESULT_TYPES = {
 const TIME = {
     IFRAME_TIMEOUT: 60000,
     TEMP_FILE_TTL: 60000,
-    PAGE_NAVIGATION_TIMEOUT: 30000,
+    PAGE_NAVIGATION_TIMEOUT: 0,
     NETWORK_IDLE_TIME: 500,
     NETWORK_IDLE_TIMEOUT: 3000
-};
-
-// Size Constants
-const SIZE = {
-    KB: 1024,
-    MB: 1024 * 1024,
-    DEFAULT_MAX_PDF_SIZE_MB: 50,
-    DEFAULT_MAX_PDF_SIZE: 50 * 1024 * 1024
 };
 
 // Priority Constants
@@ -142,7 +134,6 @@ module.exports = {
     RESPONSE_TYPE_LIST,
     RESULT_TYPES,
     TIME,
-    SIZE,
     PRIORITY,
     QUEUE,
     RATE_LIMIT,

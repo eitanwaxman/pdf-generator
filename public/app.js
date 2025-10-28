@@ -220,12 +220,22 @@
                 const data = await res.json();
                 statusEl.textContent = data.status || 'unknown';
                 
-                // Log the status update
-                log(`Status: ${data.status}`);
+                // Log the status update with retry information
+                if (data.retryInfo) {
+                    const retryMsg = data.retryInfo.message || '';
+                    const retryDetails = retryMsg ? ` (${retryMsg})` : '';
+                    log(`Status: ${data.status}${retryDetails}`);
+                } else {
+                    log(`Status: ${data.status}`);
+                }
 
                 if (data.status === 'completed') {
                     renderResult(data.result);
-                    log('Job completed');
+                    if (data.retryInfo?.message) {
+                        log(`Job completed - ${data.retryInfo.message}`);
+                    } else {
+                        log('Job completed');
+                    }
                     clearInterval(pollTimer);
                     pollTimer = null;
                     currentJobId = null;
@@ -241,6 +251,10 @@
                     } else if (msg.includes('net::ERR_CONNECTION_REFUSED')) {
                         msg = 'Connection refused. The website may be down or blocking requests.';
                     }
+                    // Add retry information to the error message
+                    if (data.retryInfo?.message) {
+                        msg = `${msg}\n\n${data.retryInfo.message}`;
+                    }
                     resultEl.textContent = msg;
                     log(`Job failed: ${msg}`);
                     clearInterval(pollTimer);
@@ -248,6 +262,10 @@
                     currentJobId = null;
                     setLoadingState(false);
                     cancelJobBtn.disabled = true;
+                } else if (data.status === 'processing' && data.retryInfo?.isRetrying) {
+                    // Show retry status in status element
+                    const retryMsg = data.retryInfo.message || `Attempt ${data.retryInfo.currentAttempt} of ${data.retryInfo.maxAttempts}`;
+                    statusEl.textContent = `${data.status} - ${retryMsg}`;
                 }
             } catch (e) {
                 log(`Polling error: ${e.message}`);
@@ -305,20 +323,43 @@
             // Update job ID and status
             currentJobId = jobId;
             jobIdEl.textContent = jobId;
-            statusEl.textContent = data.status || 'unknown';
-            log(`Status: ${data.status}`);
+            
+            // Display status with retry information if available
+            if (data.retryInfo?.message) {
+                statusEl.textContent = `${data.status} - ${data.retryInfo.message}`;
+            } else {
+                statusEl.textContent = data.status || 'unknown';
+            }
+            
+            // Log status with retry information
+            if (data.retryInfo) {
+                const retryMsg = data.retryInfo.message || '';
+                const retryDetails = retryMsg ? ` (${retryMsg})` : '';
+                log(`Status: ${data.status}${retryDetails}`);
+            } else {
+                log(`Status: ${data.status}`);
+            }
 
             if (data.status === 'completed') {
                 renderResult(data.result);
-                log('Job completed');
+                if (data.retryInfo?.message) {
+                    log(`Job completed - ${data.retryInfo.message}`);
+                } else {
+                    log('Job completed');
+                }
                 // Re-enable cancel button in case needed
                 cancelJobBtn.disabled = false;
             } else if (data.status === 'failed') {
                 let msg = data.error || data.details || 'Job failed';
+                // Add retry information to the error message
+                if (data.retryInfo?.message) {
+                    msg = `${msg}\n\n${data.retryInfo.message}`;
+                }
                 resultEl.textContent = msg;
                 log(`Job failed: ${msg}`);
             } else if (data.status === 'pending' || data.status === 'processing') {
-                resultEl.textContent = `Job is ${data.status}. You can keep checking or wait for auto-polling.`;
+                const statusMsg = data.retryInfo?.message ? ` ${data.retryInfo.message}` : '';
+                resultEl.textContent = `Job is ${data.status}.${statusMsg} You can keep checking or wait for auto-polling.`;
                 // Optionally start polling for this job
                 startPolling();
             }

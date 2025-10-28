@@ -2,7 +2,7 @@
  * Validation functions for PDF generation parameters
  */
 
-const { PDF_FORMATS_LIST, PLATFORM_LIST, RESPONSE_TYPE_LIST, TIME, SIZE } = require('./constants');
+const { PDF_FORMATS_LIST, PLATFORM_LIST, RESPONSE_TYPE_LIST, TIME } = require('./constants');
 
 /**
  * Validate PDF format

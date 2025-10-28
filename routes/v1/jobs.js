@@ -1,7 +1,7 @@
 const express = require('express');
 const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
 const { validatePdfOptions, isValidUrl } = require('../../config/validators');
-const { SIZE } = require('../../config/constants');
+const { QUEUE } = require('../../config/constants');
 
 const router = express.Router();
 
@@ -83,13 +83,75 @@ router.get('/:jobId', async (req, res) => {
             finishedOn: job.finishedOn
         };
 
-        // Job is still pending or active
-        if (state === 'waiting' || state === 'delayed') {
-            return res.json({ status: 'pending', progress, attemptsMade, ...timestamps });
+        // Prepare retry information
+        const retryInfo = {
+            attemptsMade,
+            maxAttempts: QUEUE.MAX_ATTEMPTS,
+            hasRetriesRemaining: attemptsMade < QUEUE.MAX_ATTEMPTS,
+            currentAttempt: attemptsMade + 1
+        };
+
+        // Check if job has failed (either in failed state or exhausted retries)
+        if (state === 'failed' || (attemptsMade >= QUEUE.MAX_ATTEMPTS && failedReason)) {
+            const reason = failedReason || 'Unknown error';
+            return res.json({ 
+                status: 'failed', 
+                error: reason,
+                attemptsMade,
+                retryInfo: {
+                    ...retryInfo,
+                    exhausted: true,
+                    message: `Failed after ${attemptsMade} of ${QUEUE.MAX_ATTEMPTS} attempts`
+                },
+                ...timestamps
+            });
         }
 
+        // Job is still pending (waiting to be processed initially)
+        if (state === 'waiting') {
+            return res.json({ 
+                status: 'pending', 
+                progress, 
+                attemptsMade, 
+                retryInfo,
+                ...timestamps 
+            });
+        }
+
+        // Job is delayed (waiting for retry backoff) - this means it's being retried after a failure
+        if (state === 'delayed') {
+            return res.json({ 
+                status: 'processing', 
+                progress, 
+                attemptsMade,
+                retryInfo: {
+                    ...retryInfo,
+                    isRetrying: attemptsMade > 0,
+                    message: attemptsMade > 0 
+                        ? `Retrying (attempt ${attemptsMade + 1} of ${QUEUE.MAX_ATTEMPTS})`
+                        : 'Processing',
+                    previousAttemptFailed: failedReason || null
+                },
+                ...timestamps 
+            });
+        }
+
+        // Job is active (being processed)
         if (state === 'active') {
-            return res.json({ status: 'processing', progress, attemptsMade, ...timestamps });
+            return res.json({ 
+                status: 'processing', 
+                progress, 
+                attemptsMade,
+                retryInfo: {
+                    ...retryInfo,
+                    isRetrying: attemptsMade > 0,
+                    message: attemptsMade > 0 
+                        ? `Processing (attempt ${attemptsMade + 1} of ${QUEUE.MAX_ATTEMPTS})`
+                        : 'Processing',
+                    previousAttemptFailed: attemptsMade > 0 ? (failedReason || null) : null
+                },
+                ...timestamps 
+            });
         }
 
         // Job is completed
@@ -97,7 +159,8 @@ router.get('/:jobId', async (req, res) => {
             const result = returnValue;
             // augment result with size if present
             const sizeBytes = result && typeof result.sizeBytes === 'number' ? result.sizeBytes : undefined;
-            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes / SIZE.MB).toFixed(2)) : undefined);
+            const MB = 1024 * 1024; // 1MB in bytes
+            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes / MB).toFixed(2)) : undefined);
             return res.json({ 
                 status: 'completed', 
                 result,
@@ -105,17 +168,13 @@ router.get('/:jobId', async (req, res) => {
                 sizeMB,
                 progress,
                 attemptsMade,
-                ...timestamps
-            });
-        }
-
-        // Job failed
-        if (state === 'failed') {
-            const reason = failedReason || 'Unknown error';
-            return res.json({ 
-                status: 'failed', 
-                error: reason,
-                attemptsMade,
+                retryInfo: {
+                    ...retryInfo,
+                    succeeded: true,
+                    message: attemptsMade > 0 
+                        ? `Succeeded on attempt ${attemptsMade + 1} of ${QUEUE.MAX_ATTEMPTS}`
+                        : 'Succeeded on first attempt'
+                },
                 ...timestamps
             });
         }

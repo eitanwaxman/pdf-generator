@@ -3,7 +3,7 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const { validatePdfOptions } = require('../config/validators');
-const { TIME, DEFAULT_MARGIN, PDF_FORMATS, WATERMARK, SIZE, PLATFORMS, PDF_FULL_HEIGHTS, PAGE_LIMITS } = require('../config/constants');
+const { TIME, DEFAULT_MARGIN, PDF_FORMATS, WATERMARK, PLATFORMS, PDF_FULL_HEIGHTS, PAGE_LIMITS } = require('../config/constants');
 
 const SERVER_URL = process.env.SERVER_URL || "http://localhost:3000";
 
@@ -221,19 +221,15 @@ async function generatePdf({ url, pdfOptions, account }) {
     try {
         await page.goto(url, { waitUntil: 'networkidle0', timeout: TIME.PAGE_NAVIGATION_TIMEOUT });
 
-        // Wait for images to load - progressively scroll and wait for network idle
-        // Apply maxHeight limit based on tier and format
         await scrollPageProgressively(page, 200, maxHeight);
 
         await page.emulateMediaType('screen');
 
-        // Apply platform-specific logic
         if (platform === PLATFORMS.WIX) {
             await page.evaluate(removeWixAds);
             await page.evaluate(removeCookieBanner);
         }
 
-        // Add watermark for free accounts
         if (addWatermarkForAccount) {
             await page.evaluate(addWatermark, WATERMARK.URL, WATERMARK.TEXT);
         }
@@ -250,6 +246,7 @@ async function generatePdf({ url, pdfOptions, account }) {
 
         return { pdfBuffer, fileUrl };
     } catch (error) {
+        console.error(`[PDF Service] Error generating PDF: ${error.message}`);
         // Enhance error message with URL context for better debugging
         if (error.message.includes('ERR_NAME_NOT_RESOLVED')) {
             throw new Error(`Cannot resolve DNS for: ${url}. The domain may not exist or the DNS cannot be reached.`);

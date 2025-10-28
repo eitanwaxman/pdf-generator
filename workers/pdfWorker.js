@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { createBullMQConnection } = require('../config/redis');
 const { generatePdf } = require('../services/pdfService');
 const { isValidUrl } = require('../config/validators');
-const { SIZE, RESPONSE_TYPES, RESULT_TYPES, WORKER_CONCURRENCY } = require('../config/constants');
+const { RESPONSE_TYPES, RESULT_TYPES, WORKER_CONCURRENCY } = require('../config/constants');
 const fs = require('fs');
 
 const connection = createBullMQConnection();
@@ -24,20 +24,10 @@ const worker = new Worker(
             account
         });
         
-        // Check file size limit
-        const maxSizeMB = parseInt(process.env.MAX_PDF_SIZE_MB) || SIZE.DEFAULT_MAX_PDF_SIZE_MB;
-        const maxSizeBytes = maxSizeMB * SIZE.MB;
-        
+        // Calculate size for response
+        const MB = 1024 * 1024; // 1MB in bytes
         const sizeBytes = pdfBuffer.length;
-        const sizeMB = Number((sizeBytes / SIZE.MB).toFixed(2));
-        if (sizeBytes > maxSizeBytes) {
-            const err = new Error(`PDF size (${sizeMB}MB) exceeds maximum allowed size (${maxSizeMB}MB)`);
-            err.code = 'E_PDF_TOO_LARGE';
-            err.sizeBytes = sizeBytes;
-            err.sizeMB = sizeMB;
-            err.maxSizeMB = maxSizeMB;
-            throw err;
-        }
+        const sizeMB = Number((sizeBytes / MB).toFixed(2));
         
         // Store result based on response type
         const responseType = options.responseType || RESPONSE_TYPES.BUFFER;
