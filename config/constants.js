@@ -107,7 +107,7 @@ const DEFAULT_MARGIN = {
 };
 
 // Concurrency
-const WORKER_CONCURRENCY = 1;
+const WORKER_CONCURRENCY = 3;
 
 module.exports = {
     PDF_FORMATS,
