@@ -27,8 +27,16 @@ router.post('/', async (req, res) => {
             message: 'Job created successfully'
         });
     } catch (error) {
-        console.error('Error creating job:', error);
-        res.status(500).json({ error: 'Failed to create job' });
+        console.error('Error creating job:', {
+            message: error.message,
+            stack: error.stack,
+            url,
+            options
+        });
+        res.status(500).json({ 
+            error: 'Failed to create job',
+            details: error.message
+        });
     }
 });
 
@@ -48,39 +56,57 @@ router.get('/:jobId', async (req, res) => {
 
         const state = await job.getState();
         const progress = job.progress;
+        const attemptsMade = job.attemptsMade;
+        const failedReason = job.failedReason;
+        const returnValue = await job.returnvalue;
+        const timestamps = {
+            timestamp: job.timestamp,
+            processedOn: job.processedOn,
+            finishedOn: job.finishedOn
+        };
 
         // Job is still pending or active
         if (state === 'waiting' || state === 'delayed') {
-            return res.json({ status: 'pending' });
+            return res.json({ status: 'pending', progress, attemptsMade, ...timestamps });
         }
 
         if (state === 'active') {
-            return res.json({ status: 'processing' });
+            return res.json({ status: 'processing', progress, attemptsMade, ...timestamps });
         }
 
         // Job is completed
         if (state === 'completed') {
-            const result = await job.returnvalue;
+            const result = returnValue;
+            // augment result with size if present
+            const sizeBytes = result && typeof result.sizeBytes === 'number' ? result.sizeBytes : undefined;
+            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes/1024/1024).toFixed(2)) : undefined);
             return res.json({ 
                 status: 'completed', 
-                result 
+                result,
+                sizeBytes,
+                sizeMB,
+                progress,
+                attemptsMade,
+                ...timestamps
             });
         }
 
         // Job failed
         if (state === 'failed') {
-            const failedReason = job.failedReason || 'Unknown error';
+            const reason = failedReason || 'Unknown error';
             return res.json({ 
                 status: 'failed', 
-                error: failedReason 
+                error: reason,
+                attemptsMade,
+                ...timestamps
             });
         }
 
         return res.json({ status: 'unknown' });
 
     } catch (error) {
-        console.error('Error getting job:', error);
-        res.status(500).json({ error: 'Failed to retrieve job status' });
+        console.error('Error getting job:', { message: error.message, stack: error.stack, jobId });
+        res.status(500).json({ error: 'Failed to retrieve job status', details: error.message });
     }
 });
 
@@ -100,7 +126,7 @@ router.delete('/:jobId', async (req, res) => {
 
         const state = await job.getState();
 
-        if (state === 'pending' || state === 'delayed') {
+        if (state === 'waiting' || state === 'delayed') {
             await job.remove();
             return res.json({ message: 'Job cancelled successfully' });
         }

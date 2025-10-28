@@ -27,8 +27,15 @@ const worker = new Worker(
         const maxSizeMB = parseInt(process.env.MAX_PDF_SIZE_MB) || 50;
         const maxSizeBytes = maxSizeMB * 1024 * 1024;
         
-        if (pdfBuffer.length > maxSizeBytes) {
-            throw new Error(`PDF size (${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${maxSizeMB}MB)`);
+        const sizeBytes = pdfBuffer.length;
+        const sizeMB = Number((sizeBytes / 1024 / 1024).toFixed(2));
+        if (sizeBytes > maxSizeBytes) {
+            const err = new Error(`PDF size (${sizeMB}MB) exceeds maximum allowed size (${maxSizeMB}MB)`);
+            err.code = 'E_PDF_TOO_LARGE';
+            err.sizeBytes = sizeBytes;
+            err.sizeMB = sizeMB;
+            err.maxSizeMB = maxSizeMB;
+            throw err;
         }
         
         // Store result based on response type
@@ -37,13 +44,17 @@ const worker = new Worker(
         if (responseType === 'url') {
             return {
                 type: 'url',
-                url: fileUrl
+                url: fileUrl,
+                sizeBytes,
+                sizeMB
             };
         } else {
             // Convert buffer to base64
             return {
                 type: 'buffer',
-                pdf: pdfBuffer.toString('base64')
+                pdf: pdfBuffer.toString('base64'),
+                sizeBytes,
+                sizeMB
             };
         }
     },

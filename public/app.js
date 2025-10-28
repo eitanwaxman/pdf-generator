@@ -85,7 +85,13 @@
             urlLine.appendChild(addCopyButton(() => url, 'Copy URL'));
 
             resultEl.appendChild(urlLine);
+            const sizeInfo = document.createElement('div');
+            sizeInfo.className = 'small';
+            if (typeof res.sizeMB === 'number') {
+                sizeInfo.textContent = `~${res.sizeMB} MB`;
+            }
             resultEl.appendChild(smallUrl);
+            if (sizeInfo.textContent) resultEl.appendChild(sizeInfo);
 
             const preview = document.createElement('iframe');
             preview.src = url;
@@ -97,11 +103,16 @@
             resultEl.appendChild(preview);
         } else if (res.type === 'buffer' && res.pdf) {
             const base64 = res.pdf;
-            const sizeKB = Math.round((base64.length * 3) / 4 / 1024);
+            const inferredSizeBytes = Math.floor((base64.length * 3) / 4);
+            const sizeKB = Math.round(inferredSizeBytes / 1024);
 
             const info = document.createElement('div');
             info.className = 'small';
-            info.textContent = `Received base64 buffer (~${sizeKB} KB)`;
+            if (typeof res.sizeMB === 'number') {
+                info.textContent = `Size: ~${res.sizeMB} MB`;
+            } else {
+                info.textContent = `Received base64 buffer (~${sizeKB} KB)`;
+            }
 
             const blob = base64ToBlob(base64, 'application/pdf');
             const objectUrl = URL.createObjectURL(blob);
@@ -210,20 +221,39 @@
                 if (!res.ok) throw new Error('Failed to get status');
                 const data = await res.json();
                 statusEl.textContent = data.status || 'unknown';
+                
+                // Log the status update
+                log(`Status: ${data.status}`);
 
                 if (data.status === 'completed') {
                     renderResult(data.result);
                     log('Job completed');
                     clearInterval(pollTimer);
+                    pollTimer = null;
+                    currentJobId = null;
                     setLoadingState(false);
+                    cancelJobBtn.disabled = true;
                 } else if (data.status === 'failed') {
-                    resultEl.textContent = data.error || 'Job failed';
-                    log(`Job failed: ${data.error || 'unknown error'}`);
+                    let msg = data.error || data.details || 'Job failed';
+                    // Provide user-friendly error messages for common network errors
+                    if (msg.includes('net::ERR_NAME_NOT_RESOLVED')) {
+                        msg = 'Unable to reach the website. Please check that the URL is correct and the website is online.';
+                    } else if (msg.includes('net::ERR_TIMED_OUT')) {
+                        msg = 'Request timed out. The website may be slow or unreachable.';
+                    } else if (msg.includes('net::ERR_CONNECTION_REFUSED')) {
+                        msg = 'Connection refused. The website may be down or blocking requests.';
+                    }
+                    resultEl.textContent = msg;
+                    log(`Job failed: ${msg}`);
                     clearInterval(pollTimer);
+                    pollTimer = null;
+                    currentJobId = null;
                     setLoadingState(false);
+                    cancelJobBtn.disabled = true;
                 }
             } catch (e) {
                 log(`Polling error: ${e.message}`);
+                console.error('Polling error:', e);
             }
         };
 

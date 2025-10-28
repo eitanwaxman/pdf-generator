@@ -100,7 +100,20 @@ async function generatePdf({ url, pdfOptions, account, env }) {
 
     const page = await browser.newPage();
 
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 0 });
+    try {
+        await page.goto(url, { waitUntil: 'networkidle0', timeout: 0 });
+    } catch (error) {
+        await page.close();
+        // Enhance error message with URL context for better debugging
+        if (error.message.includes('ERR_NAME_NOT_RESOLVED')) {
+            throw new Error(`Cannot resolve DNS for: ${url}. The domain may not exist or the DNS cannot be reached.`);
+        } else if (error.message.includes('ERR_TIMED_OUT')) {
+            throw new Error(`Request to ${url} timed out. The website may be slow or unreachable.`);
+        } else if (error.message.includes('ERR_CONNECTION_REFUSED')) {
+            throw new Error(`Connection to ${url} was refused. The server may be down or blocking requests.`);
+        }
+        throw new Error(`Failed to load ${url}: ${error.message}`);
+    }
 
     await page.evaluate(() => {
         window.scrollBy(0, document.body.scrollHeight);
