@@ -84,14 +84,10 @@ function storeTemporaryUrl(pdfBuffer) {
  * @param {string} params.url - The URL to convert to PDF
  * @param {object} params.pdfOptions - PDF generation options (format, margin, delay, waitForDataLoad)
  * @param {object} params.account - Account information (tier: 'free' | 'paid')
- * @param {string} params.env - Rendering environment enum (e.g., 'generic' | 'wix')
  * @returns {object} - { pdfBuffer, fileUrl? }
  */
-async function generatePdf({ url, pdfOptions, account, env }) {
+async function generatePdf({ url, pdfOptions, account }) {
     const { margin, format, delay, waitForDataLoad } = pdfOptions || {};
-
-    // Normalize environment to a simple enum
-    const renderEnv = (env || 'generic').toLowerCase();
 
     // Determine if watermark should be added based on account tier
     const addWatermarkForAccount = account && account.tier === 'free';
@@ -135,11 +131,7 @@ async function generatePdf({ url, pdfOptions, account, env }) {
 
     await page.emulateMediaType('screen');
 
-    // Apply environment-specific logic
-    if (renderEnv === 'wix') {
-        await page.evaluate(removeWixAds);
-        await page.evaluate(removeCookieBanner);
-    }
+    // Environment-specific logic removed
 
     // Add watermark for free accounts
     if (addWatermarkForAccount) {

@@ -15,12 +15,11 @@ const worker = new Worker(
             throw new Error('Invalid URL provided');
         }
         
-        // Generate PDF (map legacy options to new parameter shape)
+        // Generate PDF
         const { pdfBuffer, fileUrl } = await generatePdf({
             url,
             pdfOptions: options,
-            account,
-            env: options && typeof options.wix !== 'undefined' ? (options.wix ? 'wix' : 'generic') : 'generic'
+            account
         });
         
         // Check file size limit (default 50MB)

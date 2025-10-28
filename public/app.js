@@ -6,7 +6,6 @@
     const urlInput = $('url');
     const formatSelect = $('format');
     const delayInput = $('delay');
-    const envSelect = $('env');
     const responseTypeSelect = $('responseType');
     const marginTop = $('marginTop');
     const marginBottom = $('marginBottom');
@@ -174,8 +173,7 @@
                     },
                     delay: Number(delayInput.value || 0),
                     waitForDataLoad: !!waitForDataLoad.checked,
-                    responseType: responseTypeSelect.value,
-                    wix: envSelect.value === 'wix'
+                    responseType: responseTypeSelect.value
                 }
             };
 

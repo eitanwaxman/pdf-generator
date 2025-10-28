@@ -54,23 +54,6 @@ const createRedisConnection = async () => {
     return client;
 };
 
-// Legacy ioredis connection (keeping for backward compatibility if needed)
-const createIoRedisConnection = () => {
-    const connection = process.env.REDIS_URL 
-        ? new Redis(process.env.REDIS_URL)
-        : new Redis(redisConfig);
-    
-    connection.on('error', (err) => {
-        console.error('Redis connection error:', err);
-    });
-    
-    connection.on('connect', () => {
-        console.log('Redis connected successfully');
-    });
-    
-    return connection;
-};
-
 // Create a Redis connection specifically for BullMQ
 // BullMQ requires maxRetriesPerRequest: null
 const createBullMQConnection = () => {
@@ -113,7 +96,6 @@ const createBullMQConnection = () => {
 
 module.exports = {
     createRedisConnection,
-    createIoRedisConnection,
     createBullMQConnection,
     redisConfig
 };
