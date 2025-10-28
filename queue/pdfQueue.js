@@ -1,22 +1,23 @@
 const { Queue } = require('bullmq');
 const { createBullMQConnection } = require('../config/redis');
+const { QUEUE, PRIORITY } = require('../config/constants');
 
 const connection = createBullMQConnection();
 
 const pdfQueue = new Queue('pdf-generation', {
     connection,
     defaultJobOptions: {
-        attempts: 3,
+        attempts: QUEUE.MAX_ATTEMPTS,
         backoff: {
             type: 'exponential',
-            delay: 2000,
+            delay: QUEUE.BACKOFF_DELAY,
         },
         removeOnComplete: {
-            age: 3600, // Keep completed jobs for 1 hour
-            count: 100,
+            age: QUEUE.JOB_KEEP_COMPLETED_SECONDS,
+            count: QUEUE.JOB_KEEP_COMPLETED_COUNT,
         },
         removeOnFail: {
-            age: 24 * 3600, // Keep failed jobs for 24 hours
+            age: QUEUE.JOB_KEEP_FAILED_SECONDS,
         },
     },
 });
@@ -30,7 +31,7 @@ const pdfQueue = new Queue('pdf-generation', {
  */
 async function addPdfJob(url, options, account) {
     // Determine priority based on account tier
-    const priority = account && account.tier === 'paid' ? 10 : 1;
+    const priority = account && account.tier === 'paid' ? PRIORITY.PAID_TIER : PRIORITY.FREE_TIER;
     
     const job = await pdfQueue.add(
         'generate-pdf',

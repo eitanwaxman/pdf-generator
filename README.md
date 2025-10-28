@@ -9,7 +9,7 @@ A production-ready API service for converting websites to PDF with job queuing, 
 - **Rate Limiting**: Redis-backed rate limiting (50/day for free, unlimited for paid)
 - **Account Tiers**: Free (with watermark) and Paid (no watermark, priority queuing)
 - **Versioned API**: RESTful API with versioning support
-- **Generic & Wix-Specific**: Apply Wix-specific logic only when needed
+- **Platform-Specific**: Apply platform-specific optimizations (e.g., Wix)
 - **Multiple Response Types**: Return PDF as buffer or temporary URL
 
 ## Prerequisites
@@ -102,7 +102,7 @@ curl -X POST http://localhost:3000/api/v1/jobs \
       "margin": {"top": "50px", "bottom": "50px", "left": "50px", "right": "50px"},
       "delay": 2000,
       "waitForDataLoad": false,
-      "wix": false,
+      "platform": "wix",
       "responseType": "buffer"
     }
   }'
@@ -184,11 +184,11 @@ curl -X DELETE http://localhost:3000/api/v1/jobs/:jobId \
 ### Request Options
 
 - `url` (required): Website URL to convert
-- `options.format`: PDF format (A4, Letter, etc.) - default: A4
+- `options.format`: PDF format - one of: Letter, Legal, Tabloid, Ledger, A0, A1, A2, A3, A4, A5, A6 - default: A4
 - `options.margin`: PDF margins - default: {top: "100px", right: "50px", bottom: "100px", left: "50px"}
 - `options.delay`: Additional wait time in ms (max 10000) - default: 2000
 - `options.waitForDataLoad`: Wait for iframe and #loadedIndicator - default: false
-- `options.wix`: Apply Wix-specific ad/banner removal - default: false
+- `options.platform`: Platform-specific optimizations (e.g., "wix" for Wix ad/banner removal) - default: undefined
 - `options.responseType`: "buffer" or "url" - default: "buffer"
 
 ### Account Tiers

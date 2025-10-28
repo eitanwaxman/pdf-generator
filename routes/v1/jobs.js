@@ -1,6 +1,8 @@
 const express = require('express');
 const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
 const { isValidUrl } = require('../../services/pdfService');
+const { validatePdfOptions } = require('../../config/validators');
+const { SIZE } = require('../../config/constants');
 
 const router = express.Router();
 
@@ -17,6 +19,17 @@ router.post('/', async (req, res) => {
 
     if (!isValidUrl(url)) {
         return res.status(400).json({ error: 'Invalid URL format' });
+    }
+
+    // Validate PDF options if provided
+    if (options) {
+        const validation = validatePdfOptions(options);
+        if (!validation.valid) {
+            return res.status(400).json({ 
+                error: 'Invalid PDF options',
+                details: validation.errors
+            });
+        }
     }
 
     try {
@@ -79,7 +92,7 @@ router.get('/:jobId', async (req, res) => {
             const result = returnValue;
             // augment result with size if present
             const sizeBytes = result && typeof result.sizeBytes === 'number' ? result.sizeBytes : undefined;
-            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes/1024/1024).toFixed(2)) : undefined);
+            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes / SIZE.MB).toFixed(2)) : undefined);
             return res.json({ 
                 status: 'completed', 
                 result,

@@ -1,4 +1,5 @@
 const { createRedisConnection } = require('../config/redis');
+const { RATE_LIMIT } = require('../config/constants');
 
 // Redis connection for rate limiting
 let redisConnection;
@@ -26,8 +27,8 @@ const checkRateLimit = async (apiKey) => {
 
     try {
         const key = `rate_limit:${apiKey}`;
-        const windowMs = 24 * 60 * 60 * 1000; // 24 hours
-        const maxRequests = 50;
+        const windowMs = RATE_LIMIT.WINDOW_MS;
+        const maxRequests = RATE_LIMIT.MAX_REQUESTS_FREE;
         
         const current = await redisConnection.get(key);
         

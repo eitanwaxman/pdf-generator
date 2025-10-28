@@ -39,10 +39,11 @@ Successfully transformed the PDF generator into a production-ready API service w
 - **URL mode**: Returns temporary URL accessible for 60 seconds
 - Configurable via `responseType` option
 
-### 7. ✅ Generic vs Wix-Specific Logic
-- Wix ad/banner removal only applied when `wix: true` in options
-- Watermark logic tied to account tier (free only), not Wix
-- Generic by default, Wix features opt-in
+### 7. ✅ Platform-Specific Logic
+- Platform-specific optimizations applied when `platform` option is set (e.g., "wix")
+- Wix ad/banner removal applied when `platform: "wix"` in options
+- Watermark logic tied to account tier (free only), not platform
+- Generic by default, platform features opt-in
 
 ### 8. ✅ Account Tier System
 - **Free tier**: 50 requests/day, watermark, lower priority
@@ -96,7 +97,7 @@ pdf-generator/
 
 ### Flexibility
 - Versioned API for future updates
-- Generic PDF generation with optional Wix features
+- Generic PDF generation with optional platform-specific features
 - Multiple response types (buffer/URL)
 - Configurable options
 
