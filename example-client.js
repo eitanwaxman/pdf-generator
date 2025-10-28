@@ -30,7 +30,6 @@ async function testPdfGeneration() {
                         bottom: '50px',
                         left: '50px'
                     },
-                    delay: 2000,
                     responseType: 'url'
                 }
             })

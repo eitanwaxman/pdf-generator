@@ -54,8 +54,6 @@ const RESULT_TYPES = {
 
 // Time Constants (in milliseconds)
 const TIME = {
-    DEFAULT_DELAY: 2000,
-    MAX_DELAY: 10000,
     IFRAME_TIMEOUT: 60000,
     TEMP_FILE_TTL: 60000
 };

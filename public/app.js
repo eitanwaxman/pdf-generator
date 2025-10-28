@@ -5,16 +5,17 @@
     const baseUrlInput = $('baseUrl');
     const urlInput = $('url');
     const formatSelect = $('format');
-    const delayInput = $('delay');
     const responseTypeSelect = $('responseType');
+    const platformSelect = $('platform');
     const marginTop = $('marginTop');
     const marginBottom = $('marginBottom');
     const marginLeft = $('marginLeft');
     const marginRight = $('marginRight');
-    const waitForDataLoad = $('waitForDataLoad');
 
     const createJobBtn = $('createJobBtn');
     const cancelJobBtn = $('cancelJobBtn');
+    const checkJobBtn = $('checkJobBtn');
+    const checkJobIdInput = $('checkJobIdInput');
     const jobIdEl = $('jobId');
     const statusEl = $('status');
     const resultEl = $('result');
@@ -171,9 +172,8 @@
                         left: `${Number(marginLeft.value || 0)}px`,
                         right: `${Number(marginRight.value || 0)}px`
                     },
-                    delay: Number(delayInput.value || 0),
-                    waitForDataLoad: !!waitForDataLoad.checked,
-                    responseType: responseTypeSelect.value
+                    responseType: responseTypeSelect.value,
+                    platform: platformSelect.value || undefined
                 }
             };
 
@@ -181,7 +181,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-api-key': apiKeyInput.value.trim() || 'test-free-key'
+                    'x-api-key': apiKeyInput.value.trim() || 'test-paid-key'
                 },
                 body: JSON.stringify(payload)
             });
@@ -214,7 +214,7 @@
         const poll = async () => {
             try {
                 const res = await fetch(`${getBaseUrl()}/api/v1/jobs/${currentJobId}`, {
-                    headers: { 'x-api-key': apiKeyInput.value.trim() || 'test-free-key' }
+                    headers: { 'x-api-key': apiKeyInput.value.trim() || 'test-paid-key' }
                 });
                 if (!res.ok) throw new Error('Failed to get status');
                 const data = await res.json();
@@ -265,13 +265,67 @@
         try {
             const res = await fetch(`${getBaseUrl()}/api/v1/jobs/${currentJobId}`, {
                 method: 'DELETE',
-                headers: { 'x-api-key': apiKeyInput.value.trim() || 'test-free-key' }
+                headers: { 'x-api-key': apiKeyInput.value.trim() || 'test-paid-key' }
             });
             if (!res.ok) throw new Error('Failed to cancel job');
             log('Job cancelled');
             clear();
         } catch (e) {
             log(`Cancel error: ${e.message}`);
+        }
+    }
+
+    async function checkJobById() {
+        const jobId = checkJobIdInput.value.trim();
+        if (!jobId) {
+            log('Please enter a job ID');
+            return;
+        }
+
+        log(`Checking job: ${jobId}`);
+        statusEl.textContent = 'fetching...';
+        
+        try {
+            const res = await fetch(`${getBaseUrl()}/api/v1/jobs/${jobId}`, {
+                headers: { 'x-api-key': apiKeyInput.value.trim() || 'test-paid-key' }
+            });
+            
+            if (!res.ok) {
+                if (res.status === 404) {
+                    statusEl.textContent = 'not found';
+                    resultEl.textContent = 'Job not found. Please check the job ID.';
+                    log('Job not found');
+                    return;
+                }
+                throw new Error('Failed to get job status');
+            }
+
+            const data = await res.json();
+            
+            // Update job ID and status
+            currentJobId = jobId;
+            jobIdEl.textContent = jobId;
+            statusEl.textContent = data.status || 'unknown';
+            log(`Status: ${data.status}`);
+
+            if (data.status === 'completed') {
+                renderResult(data.result);
+                log('Job completed');
+                // Re-enable cancel button in case needed
+                cancelJobBtn.disabled = false;
+            } else if (data.status === 'failed') {
+                let msg = data.error || data.details || 'Job failed';
+                resultEl.textContent = msg;
+                log(`Job failed: ${msg}`);
+            } else if (data.status === 'pending' || data.status === 'processing') {
+                resultEl.textContent = `Job is ${data.status}. You can keep checking or wait for auto-polling.`;
+                // Optionally start polling for this job
+                startPolling();
+            }
+        } catch (e) {
+            statusEl.textContent = 'error';
+            resultEl.textContent = e.message;
+            log(`Error: ${e.message}`);
         }
     }
 
@@ -287,6 +341,14 @@
 
     createJobBtn.addEventListener('click', createJob);
     cancelJobBtn.addEventListener('click', cancelJob);
+    checkJobBtn.addEventListener('click', checkJobById);
+    
+    // Allow Enter key to trigger check
+    checkJobIdInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            checkJobById();
+        }
+    });
 })();
 
 

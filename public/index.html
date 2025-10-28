@@ -34,7 +34,7 @@
             <div class="row">
                 <div>
                     <label for="apiKey">API Key</label>
-                    <input id="apiKey" placeholder="test-free-key" value="test-free-key" />
+                    <input id="apiKey" placeholder="test-paid-key" value="test-paid-key" />
                 </div>
                 <div>
                     <label for="baseUrl">Server URL</label>
@@ -56,8 +56,11 @@
                     </select>
                 </div>
                 <div>
-                    <label for="delay">Extra Delay (ms)</label>
-                    <input id="delay" type="number" min="0" max="10000" value="2000" />
+                    <label for="platform">Platform</label>
+                    <select id="platform">
+                        <option value="">None</option>
+                        <option value="wix">Wix</option>
+                    </select>
                 </div>
             </div>
 
@@ -69,9 +72,6 @@
                         <option value="buffer">Buffer (base64)</option>
                     </select>
                 </div>
-            </div>
-
-            <div class="row">
                 <div>
                     <label>Margins (px)</label>
                     <div class="row">
@@ -79,6 +79,9 @@
                         <input id="marginBottom" type="number" placeholder="bottom" value="100" />
                     </div>
                 </div>
+            </div>
+
+            <div class="row">
                 <div>
                     <label>&nbsp;</label>
                     <div class="row">
@@ -86,15 +89,20 @@
                         <input id="marginRight" type="number" placeholder="right" value="50" />
                     </div>
                 </div>
-            </div>
-
-            <div style="margin-top:10px">
-                <label><input type="checkbox" id="waitForDataLoad" /> Wait for data load (iframe + #loadedIndicator)</label>
+                <div></div>
             </div>
 
             <div class="actions">
                 <button id="createJobBtn">Create PDF Job</button>
                 <button id="cancelJobBtn" class="secondary" disabled>Cancel Job</button>
+            </div>
+
+            <div style="margin-top:20px; padding-top:20px; border-top:1px solid #223">
+                <label for="checkJobIdInput">Check Job by ID</label>
+                <div style="display:flex; gap:8px">
+                    <input id="checkJobIdInput" placeholder="Enter job ID" style="flex:1" />
+                    <button id="checkJobBtn" class="secondary">Check Job</button>
+                </div>
             </div>
 
             <div style="margin-top:16px">

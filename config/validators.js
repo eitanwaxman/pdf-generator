@@ -14,16 +14,6 @@ function isValidFormat(format) {
 }
 
 /**
- * Validate delay value
- * @param {number} delay - Delay in milliseconds
- * @returns {boolean}
- */
-function isValidDelay(delay) {
-    return delay === undefined || delay === null || 
-           (typeof delay === 'number' && delay >= 0 && delay <= TIME.MAX_DELAY);
-}
-
-/**
  * Validate platform
  * @param {string} platform - Platform to validate
  * @returns {boolean}
@@ -66,15 +56,6 @@ function isValidMargin(margin) {
 }
 
 /**
- * Validate waitForDataLoad
- * @param {boolean} waitForDataLoad - Wait for data load flag
- * @returns {boolean}
- */
-function isValidWaitForDataLoad(waitForDataLoad) {
-    return waitForDataLoad === undefined || waitForDataLoad === null || typeof waitForDataLoad === 'boolean';
-}
-
-/**
  * Validate all PDF options
  * @param {object} options - PDF options to validate
  * @returns {object} - { valid: boolean, errors: string[] }
@@ -86,26 +67,16 @@ function validatePdfOptions(options) {
         return { valid: true, errors: [] }; // Options is optional
     }
     
-    const { format, margin, delay, waitForDataLoad, platform, responseType } = options;
+    const { format, margin, platform, responseType } = options;
     
     // Validate format
     if (!isValidFormat(format)) {
         errors.push(`Invalid format: ${format}. Must be one of: ${PDF_FORMATS_LIST.join(', ')}`);
     }
     
-    // Validate delay
-    if (!isValidDelay(delay)) {
-        errors.push(`Invalid delay: ${delay}. Must be a number between 0 and ${TIME.MAX_DELAY} milliseconds`);
-    }
-    
     // Validate margin
     if (!isValidMargin(margin)) {
         errors.push('Invalid margin format. Expected object with optional keys: top, right, bottom, left');
-    }
-    
-    // Validate waitForDataLoad
-    if (!isValidWaitForDataLoad(waitForDataLoad)) {
-        errors.push('Invalid waitForDataLoad: must be a boolean');
     }
     
     // Validate platform
@@ -139,11 +110,9 @@ function isValidUrl(url) {
 
 module.exports = {
     isValidFormat,
-    isValidDelay,
     isValidPlatform,
     isValidResponseType,
     isValidMargin,
-    isValidWaitForDataLoad,
     validatePdfOptions,
     isValidUrl
 };

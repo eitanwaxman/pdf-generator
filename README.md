@@ -100,8 +100,6 @@ curl -X POST http://localhost:3000/api/v1/jobs \
     "options": {
       "format": "A4",
       "margin": {"top": "50px", "bottom": "50px", "left": "50px", "right": "50px"},
-      "delay": 2000,
-      "waitForDataLoad": false,
       "platform": "wix",
       "responseType": "buffer"
     }
@@ -186,8 +184,6 @@ curl -X DELETE http://localhost:3000/api/v1/jobs/:jobId \
 - `url` (required): Website URL to convert
 - `options.format`: PDF format - one of: Letter, Legal, Tabloid, Ledger, A0, A1, A2, A3, A4, A5, A6 - default: A4
 - `options.margin`: PDF margins - default: {top: "100px", right: "50px", bottom: "100px", left: "50px"}
-- `options.delay`: Additional wait time in ms (max 10000) - default: 2000
-- `options.waitForDataLoad`: Wait for iframe and #loadedIndicator - default: false
 - `options.platform`: Platform-specific optimizations (e.g., "wix" for Wix ad/banner removal) - default: undefined
 - `options.responseType`: "buffer" or "url" - default: "buffer"
 
