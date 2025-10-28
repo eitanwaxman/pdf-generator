@@ -2,7 +2,13 @@
  * Validation functions for PDF generation parameters
  */
 
-const { PDF_FORMATS_LIST, PLATFORM_LIST, RESPONSE_TYPE_LIST, TIME } = require('./constants');
+const { 
+    PDF_FORMATS_LIST, 
+    PLATFORM_LIST, 
+    RESPONSE_TYPE_LIST, 
+    OUTPUT_TYPE_LIST,
+    SCREENSHOT_TYPE_LIST 
+} = require('./constants');
 
 /**
  * Validate PDF format
@@ -56,6 +62,27 @@ function isValidMargin(margin) {
 }
 
 /**
+ * Validate viewport object
+ * @param {object} viewport - Viewport object
+ * @returns {boolean}
+ */
+function isValidViewport(viewport) {
+    if (!viewport || typeof viewport !== 'object') {
+        return true; // Optional parameter
+    }
+    
+    if (viewport.width && (typeof viewport.width !== 'number' || viewport.width <= 0)) {
+        return false;
+    }
+    
+    if (viewport.height && (typeof viewport.height !== 'number' || viewport.height <= 0)) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * Validate all PDF options
  * @param {object} options - PDF options to validate
  * @returns {object} - { valid: boolean, errors: string[] }
@@ -67,7 +94,7 @@ function validatePdfOptions(options) {
         return { valid: true, errors: [] }; // Options is optional
     }
     
-    const { format, margin, platform, responseType } = options;
+    const { format, margin, platform, responseType, viewport } = options;
     
     // Validate format
     if (!isValidFormat(format)) {
@@ -89,6 +116,11 @@ function validatePdfOptions(options) {
         errors.push(`Invalid responseType: ${responseType}. Must be one of: ${RESPONSE_TYPE_LIST.join(', ')}`);
     }
     
+    // Validate viewport
+    if (!isValidViewport(viewport)) {
+        errors.push('Invalid viewport format. Expected object with optional positive number keys: width, height');
+    }
+    
     return {
         valid: errors.length === 0,
         errors
@@ -108,12 +140,126 @@ function isValidUrl(url) {
     return urlPattern.test(url);
 }
 
+/**
+ * Validate output type
+ * @param {string} outputType - Output type to validate
+ * @returns {boolean}
+ */
+function isValidOutputType(outputType) {
+    return !outputType || OUTPUT_TYPE_LIST.includes(outputType);
+}
+
+/**
+ * Validate screenshot options
+ * @param {object} screenshotOptions - Screenshot options to validate
+ * @returns {object} - { valid: boolean, errors: string[] }
+ */
+function validateScreenshotOptions(screenshotOptions) {
+    const errors = [];
+    
+    if (!screenshotOptions || typeof screenshotOptions !== 'object') {
+        return { valid: true, errors: [] }; // Optional
+    }
+    
+    const { type, quality, fullPage, viewport } = screenshotOptions;
+    
+    // Validate type
+    if (type && !SCREENSHOT_TYPE_LIST.includes(type)) {
+        errors.push(`Invalid screenshot type: ${type}. Must be one of: ${SCREENSHOT_TYPE_LIST.join(', ')}`);
+    }
+    
+    // Validate quality (only for JPEG)
+    if (quality !== undefined) {
+        if (typeof quality !== 'number' || quality < 0 || quality > 100) {
+            errors.push('Quality must be a number between 0 and 100');
+        }
+    }
+    
+    // Validate fullPage
+    if (fullPage !== undefined && typeof fullPage !== 'boolean') {
+        errors.push('fullPage must be a boolean');
+    }
+    
+    // Validate viewport
+    if (viewport) {
+        if (typeof viewport !== 'object') {
+            errors.push('viewport must be an object');
+        } else {
+            if (viewport.width && (typeof viewport.width !== 'number' || viewport.width <= 0)) {
+                errors.push('viewport.width must be a positive number');
+            }
+            if (viewport.height && (typeof viewport.height !== 'number' || viewport.height <= 0)) {
+                errors.push('viewport.height must be a positive number');
+            }
+        }
+    }
+    
+    return {
+        valid: errors.length === 0,
+        errors
+    };
+}
+
+/**
+ * Validate complete job options (shared + output-specific)
+ * @param {object} options - Job options to validate
+ * @returns {object} - { valid: boolean, errors: string[] }
+ */
+function validateJobOptions(options) {
+    const errors = [];
+    
+    if (!options || typeof options !== 'object') {
+        return { valid: true, errors: [] };
+    }
+    
+    const { outputType, responseType, platform, pdfOptions, screenshotOptions } = options;
+    
+    // Validate shared options
+    if (!isValidOutputType(outputType)) {
+        errors.push(`Invalid outputType: ${outputType}. Must be one of: ${OUTPUT_TYPE_LIST.join(', ')}`);
+    }
+    
+    if (!isValidResponseType(responseType)) {
+        errors.push(`Invalid responseType: ${responseType}. Must be one of: ${RESPONSE_TYPE_LIST.join(', ')}`);
+    }
+    
+    if (!isValidPlatform(platform)) {
+        errors.push(`Invalid platform: ${platform}. Must be one of: ${PLATFORM_LIST.join(', ')}`);
+    }
+    
+    // Validate output-specific options
+    const actualOutputType = outputType || 'pdf'; // Default to PDF
+    
+    if (actualOutputType === 'pdf') {
+        // For PDF, validate pdfOptions OR top-level options (backward compatibility)
+        const optionsToValidate = pdfOptions || options;
+        const pdfValidation = validatePdfOptions(optionsToValidate);
+        if (!pdfValidation.valid) {
+            errors.push(...pdfValidation.errors);
+        }
+    } else if (actualOutputType === 'screenshot') {
+        const screenshotValidation = validateScreenshotOptions(screenshotOptions);
+        if (!screenshotValidation.valid) {
+            errors.push(...screenshotValidation.errors);
+        }
+    }
+    
+    return {
+        valid: errors.length === 0,
+        errors
+    };
+}
+
 module.exports = {
     isValidFormat,
     isValidPlatform,
     isValidResponseType,
     isValidMargin,
+    isValidViewport,
     validatePdfOptions,
-    isValidUrl
+    isValidUrl,
+    isValidOutputType,
+    validateScreenshotOptions,
+    validateJobOptions
 };
 

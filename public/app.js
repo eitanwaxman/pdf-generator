@@ -4,6 +4,7 @@
     const apiKeyInput = $('apiKey');
     const baseUrlInput = $('baseUrl');
     const urlInput = $('url');
+    const outputTypeSelect = $('outputType');
     const formatSelect = $('format');
     const responseTypeSelect = $('responseType');
     const platformSelect = $('platform');
@@ -11,6 +12,21 @@
     const marginBottom = $('marginBottom');
     const marginLeft = $('marginLeft');
     const marginRight = $('marginRight');
+    
+    // PDF viewport options
+    const pdfViewportWidthInput = $('pdfViewportWidth');
+    const pdfViewportHeightInput = $('pdfViewportHeight');
+    
+    // Screenshot options
+    const screenshotTypeSelect = $('screenshotType');
+    const qualityInput = $('quality');
+    const fullPageSelect = $('fullPage');
+    const viewportWidthInput = $('viewportWidth');
+    const viewportHeightInput = $('viewportHeight');
+    
+    // Option panels
+    const pdfOptionsPanel = $('pdfOptions');
+    const screenshotOptionsPanel = $('screenshotOptions');
 
     const createJobBtn = $('createJobBtn');
     const cancelJobBtn = $('cancelJobBtn');
@@ -23,6 +39,24 @@
 
     let currentJobId = null;
     let pollTimer = null;
+
+    // Toggle options panel based on output type
+    function toggleOptionsPanel() {
+        const outputType = outputTypeSelect.value;
+        if (outputType === 'screenshot') {
+            pdfOptionsPanel.style.display = 'none';
+            screenshotOptionsPanel.style.display = 'block';
+            createJobBtn.textContent = 'Create Screenshot Job';
+        } else {
+            pdfOptionsPanel.style.display = 'block';
+            screenshotOptionsPanel.style.display = 'none';
+            createJobBtn.textContent = 'Create PDF Job';
+        }
+    }
+
+    // Initialize on page load
+    toggleOptionsPanel();
+    outputTypeSelect.addEventListener('change', toggleOptionsPanel);
 
     function log(message) {
         const ts = new Date().toLocaleTimeString();
@@ -44,6 +78,9 @@
     function renderResult(res) {
         resultEl.innerHTML = '';
         if (!res) return;
+
+        const outputType = res.outputType || 'pdf';
+        const isScreenshot = outputType === 'screenshot';
 
         function addCopyButton(getText, label) {
             const btn = document.createElement('button');
@@ -68,12 +105,21 @@
             return new Blob([byteArray], { type });
         }
 
+        function getMimeType(url) {
+            if (url.endsWith('.png')) return 'image/png';
+            if (url.endsWith('.jpg') || url.endsWith('.jpeg')) return 'image/jpeg';
+            if (url.endsWith('.webp')) return 'image/webp';
+            if (url.endsWith('.pdf')) return 'application/pdf';
+            return 'application/octet-stream';
+        }
+
         if (res.type === 'url' && res.url) {
             const url = res.url;
+            const mimeType = getMimeType(url);
 
             const link = document.createElement('a');
             link.href = url;
-            link.textContent = 'Open PDF';
+            link.textContent = isScreenshot ? 'Open Screenshot' : 'Open PDF';
             link.target = '_blank';
 
             const urlLine = document.createElement('div');
@@ -93,16 +139,27 @@
             resultEl.appendChild(smallUrl);
             if (sizeInfo.textContent) resultEl.appendChild(sizeInfo);
 
-            const preview = document.createElement('iframe');
-            preview.src = url;
-            preview.style.width = '100%';
-            preview.style.height = '480px';
-            preview.style.border = '1px solid #223';
-            preview.style.borderRadius = '8px';
-            preview.loading = 'lazy';
-            resultEl.appendChild(preview);
-        } else if (res.type === 'buffer' && res.pdf) {
-            const base64 = res.pdf;
+            // Display preview
+            if (isScreenshot) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.width = '100%';
+                img.style.border = '1px solid #223';
+                img.style.borderRadius = '8px';
+                img.loading = 'lazy';
+                resultEl.appendChild(img);
+            } else {
+                const preview = document.createElement('iframe');
+                preview.src = url;
+                preview.style.width = '100%';
+                preview.style.height = '480px';
+                preview.style.border = '1px solid #223';
+                preview.style.borderRadius = '8px';
+                preview.loading = 'lazy';
+                resultEl.appendChild(preview);
+            }
+        } else if (res.type === 'buffer' && (res.pdf || res.data)) {
+            const base64 = res.data || res.pdf;
             const inferredSizeBytes = Math.floor((base64.length * 3) / 4);
             const sizeKB = Math.round(inferredSizeBytes / 1024);
 
@@ -114,13 +171,14 @@
                 info.textContent = `Received base64 buffer (~${sizeKB} KB)`;
             }
 
-            const blob = base64ToBlob(base64, 'application/pdf');
+            const mimeType = isScreenshot ? 'image/png' : 'application/pdf';
+            const blob = base64ToBlob(base64, mimeType);
             const objectUrl = URL.createObjectURL(blob);
 
             const download = document.createElement('a');
             download.href = objectUrl;
-            download.download = 'document.pdf';
-            download.textContent = 'Download PDF';
+            download.download = isScreenshot ? 'screenshot.png' : 'document.pdf';
+            download.textContent = isScreenshot ? 'Download Screenshot' : 'Download PDF';
 
             const copyBtn = addCopyButton(() => base64, 'Copy base64');
 
@@ -132,21 +190,35 @@
             controls.appendChild(download);
             controls.appendChild(copyBtn);
 
-            const preview = document.createElement('iframe');
-            preview.src = objectUrl;
-            preview.style.width = '100%';
-            preview.style.height = '480px';
-            preview.style.border = '1px solid #223';
-            preview.style.borderRadius = '8px';
-            preview.loading = 'lazy';
-
             resultEl.appendChild(info);
             resultEl.appendChild(controls);
-            resultEl.appendChild(preview);
+
+            // Display preview
+            let previewElement;
+            if (isScreenshot) {
+                const img = document.createElement('img');
+                img.src = objectUrl;
+                img.style.width = '100%';
+                img.style.border = '1px solid #223';
+                img.style.borderRadius = '8px';
+                img.loading = 'lazy';
+                resultEl.appendChild(img);
+                previewElement = img;
+            } else {
+                const preview = document.createElement('iframe');
+                preview.src = objectUrl;
+                preview.style.width = '100%';
+                preview.style.height = '480px';
+                preview.style.border = '1px solid #223';
+                preview.style.borderRadius = '8px';
+                preview.loading = 'lazy';
+                resultEl.appendChild(preview);
+                previewElement = preview;
+            }
 
             // Revoke object URL when navigating away from result
             const observer = new MutationObserver(() => {
-                if (!resultEl.contains(preview)) {
+                if (!resultEl.contains(previewElement)) {
                     URL.revokeObjectURL(objectUrl);
                     observer.disconnect();
                 }
@@ -162,19 +234,49 @@
         log('Creating job');
 
         try {
-            const payload = {
-                url: urlInput.value.trim(),
-                options: {
+            const outputType = outputTypeSelect.value;
+            const options = {
+                outputType,
+                responseType: responseTypeSelect.value,
+                platform: platformSelect.value || undefined
+            };
+
+            // Add output-specific options
+            if (outputType === 'pdf') {
+                options.pdfOptions = {
                     format: formatSelect.value,
                     margin: {
                         top: `${Number(marginTop.value || 0)}px`,
                         bottom: `${Number(marginBottom.value || 0)}px`,
                         left: `${Number(marginLeft.value || 0)}px`,
                         right: `${Number(marginRight.value || 0)}px`
-                    },
-                    responseType: responseTypeSelect.value,
-                    platform: platformSelect.value || undefined
+                    }
+                };
+                
+                // Add viewport if specified
+                const pdfViewportWidth = Number(pdfViewportWidthInput.value);
+                const pdfViewportHeight = Number(pdfViewportHeightInput.value);
+                if (pdfViewportWidth && pdfViewportHeight) {
+                    options.pdfOptions.viewport = {
+                        width: pdfViewportWidth,
+                        height: pdfViewportHeight
+                    };
                 }
+            } else if (outputType === 'screenshot') {
+                options.screenshotOptions = {
+                    type: screenshotTypeSelect.value,
+                    quality: Number(qualityInput.value || 90),
+                    fullPage: fullPageSelect.value === 'true',
+                    viewport: {
+                        width: Number(viewportWidthInput.value || 1920),
+                        height: Number(viewportHeightInput.value || 1080)
+                    }
+                };
+            }
+
+            const payload = {
+                url: urlInput.value.trim(),
+                options
             };
 
             const res = await fetch(`${getBaseUrl()}/api/v1/jobs`, {

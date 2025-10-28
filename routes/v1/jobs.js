@@ -1,13 +1,13 @@
 const express = require('express');
 const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
-const { validatePdfOptions, isValidUrl } = require('../../config/validators');
+const { validateJobOptions, isValidUrl } = require('../../config/validators');
 const { QUEUE } = require('../../config/constants');
 
 const router = express.Router();
 
 /**
  * POST /api/v1/jobs
- * Create a new PDF generation job
+ * Create a new PDF or Screenshot generation job
  */
 router.post('/', async (req, res) => {
     const { url, options } = req.body;
@@ -20,12 +20,12 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Validate PDF options if provided
+    // Validate job options (PDF or Screenshot)
     if (options) {
-        const validation = validatePdfOptions(options);
+        const validation = validateJobOptions(options);
         if (!validation.valid) {
             return res.status(400).json({ 
-                error: 'Invalid PDF options',
+                error: 'Invalid options',
                 details: validation.errors
             });
         }
@@ -33,9 +33,12 @@ router.post('/', async (req, res) => {
 
     try {
         const jobId = await addPdfJob(url, options, req.account);
+        const outputType = options?.outputType || 'pdf';
+        
         res.status(202).json({ 
             jobId, 
             status: 'pending',
+            outputType,
             message: 'Job created successfully'
         });
     } catch (error) {

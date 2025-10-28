@@ -1,6 +1,6 @@
 const { Worker } = require('bullmq');
 const { createBullMQConnection } = require('../config/redis');
-const { generatePdf } = require('../services/pdfService');
+const { generateOutput } = require('../services/outputService');
 const { isValidUrl } = require('../config/validators');
 const { RESPONSE_TYPES, RESULT_TYPES, WORKER_CONCURRENCY } = require('../config/constants');
 const fs = require('fs');
@@ -10,44 +10,48 @@ const connection = createBullMQConnection();
 const worker = new Worker(
     'pdf-generation',
     async (job) => {
-        const { url, options, account } = job.data;
+        const { url, options = {}, account } = job.data;
         
         // Validate URL
         if (!isValidUrl(url)) {
             throw new Error('Invalid URL provided');
         }
         
-        // Generate PDF
-        const { pdfBuffer, fileUrl } = await generatePdf({
+        // Generate output (PDF or screenshot)
+        const { buffer, fileUrl, outputType } = await generateOutput({
             url,
-            pdfOptions: options,
+            options,
             account
         });
         
         // Calculate size for response
         const MB = 1024 * 1024; // 1MB in bytes
-        const sizeBytes = pdfBuffer.length;
+        const sizeBytes = buffer.length;
         const sizeMB = Number((sizeBytes / MB).toFixed(2));
         
         // Store result based on response type
         const responseType = options.responseType || RESPONSE_TYPES.BUFFER;
         
+        // Build result
+        const result = {
+            outputType,
+            sizeBytes,
+            sizeMB
+        };
+        
         if (responseType === RESPONSE_TYPES.URL) {
-            return {
-                type: RESULT_TYPES.URL,
-                url: fileUrl,
-                sizeBytes,
-                sizeMB
-            };
+            result.type = RESULT_TYPES.URL;
+            result.url = fileUrl;
         } else {
-            // Convert buffer to base64
-            return {
-                type: RESULT_TYPES.BUFFER,
-                pdf: pdfBuffer.toString('base64'),
-                sizeBytes,
-                sizeMB
-            };
+            result.type = RESULT_TYPES.BUFFER;
+            result.data = buffer.toString('base64');
+            // Keep 'pdf' field for backward compatibility
+            if (outputType === 'pdf') {
+                result.pdf = buffer.toString('base64');
+            }
         }
+        
+        return result;
     },
     {
         connection,
@@ -56,7 +60,8 @@ const worker = new Worker(
 );
 
 worker.on('completed', (job) => {
-    console.log(`Job ${job.id} completed successfully`);
+    const outputType = job.data?.options?.outputType || 'pdf';
+    console.log(`Job ${job.id} completed successfully (${outputType})`);
 });
 
 worker.on('failed', (job, err) => {

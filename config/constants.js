@@ -52,6 +52,34 @@ const RESULT_TYPES = {
     BUFFER: 'buffer'
 };
 
+// Output Types
+const OUTPUT_TYPES = {
+    PDF: 'pdf',
+    SCREENSHOT: 'screenshot'
+};
+
+const OUTPUT_TYPE_LIST = ['pdf', 'screenshot'];
+
+// Screenshot Types
+const SCREENSHOT_TYPES = {
+    PNG: 'png',
+    JPEG: 'jpeg',
+    WEBP: 'webp'
+};
+
+const SCREENSHOT_TYPE_LIST = ['png', 'jpeg', 'webp'];
+
+// Default Screenshot Options
+const DEFAULT_SCREENSHOT_OPTIONS = {
+    type: 'png',
+    quality: 90,
+    fullPage: true,
+    viewport: {
+        width: 1920,
+        height: 1080
+    }
+};
+
 // Time Constants (in milliseconds)
 const TIME = {
     IFRAME_TIMEOUT: 60000,
@@ -133,6 +161,11 @@ module.exports = {
     RESPONSE_TYPES,
     RESPONSE_TYPE_LIST,
     RESULT_TYPES,
+    OUTPUT_TYPES,
+    OUTPUT_TYPE_LIST,
+    SCREENSHOT_TYPES,
+    SCREENSHOT_TYPE_LIST,
+    DEFAULT_SCREENSHOT_OPTIONS,
     TIME,
     PRIORITY,
     QUEUE,
