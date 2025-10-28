@@ -67,6 +67,12 @@ router.get('/:jobId', async (req, res) => {
             return res.status(404).json({ error: 'Job not found' });
         }
 
+        // Authorization check: verify the job belongs to the authenticated user
+        const jobAccount = job.data?.account;
+        if (jobAccount && jobAccount.apiKey !== req.account.apiKey) {
+            return res.status(403).json({ error: 'Access forbidden: You can only access your own jobs' });
+        }
+
         const state = await job.getState();
         const progress = job.progress;
         const attemptsMade = job.attemptsMade;
@@ -135,6 +141,12 @@ router.delete('/:jobId', async (req, res) => {
 
         if (!job) {
             return res.status(404).json({ error: 'Job not found' });
+        }
+
+        // Authorization check: verify the job belongs to the authenticated user
+        const jobAccount = job.data?.account;
+        if (jobAccount && jobAccount.apiKey !== req.account.apiKey) {
+            return res.status(403).json({ error: 'Access forbidden: You can only delete your own jobs' });
         }
 
         const state = await job.getState();
