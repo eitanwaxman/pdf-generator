@@ -1,34 +1,86 @@
-const rateLimit = require('express-rate-limit');
-const { RedisStore } = require('rate-limit-redis');
 const { createRedisConnection } = require('../config/redis');
 
 // Redis connection for rate limiting
-const redisConnection = createRedisConnection();
+let redisConnection;
+let initAttempted = false;
+let initFailed = false;
 
-// Rate limiter for free tier: 50 requests per day
-const freeRateLimiter = rateLimit({
-    store: new RedisStore({
-        client: redisConnection
-    }),
-    windowMs: 24 * 60 * 60 * 1000, // 24 hours
-    max: 50, // Limit free accounts to 50 requests per day
-    message: 'Rate limit exceeded for free account. Upgrade to paid for unlimited access.',
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+// Initialize Redis connection asynchronously
+(async () => {
+    try {
+        initAttempted = true;
+        redisConnection = await createRedisConnection();
+        console.log('Rate limiter initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize rate limiter:', error.message);
+        console.log('Rate limiting will be disabled. Starting without Redis...');
+        initFailed = true;
+    }
+})();
+
+// Custom rate limiter using Redis directly
+const checkRateLimit = async (apiKey) => {
+    if (!redisConnection || initFailed) {
+        return true; // Allow request if Redis unavailable
+    }
+
+    try {
+        const key = `rate_limit:${apiKey}`;
+        const windowMs = 24 * 60 * 60 * 1000; // 24 hours
+        const maxRequests = 50;
+        
+        const current = await redisConnection.get(key);
+        
+        if (current === null) {
+            // First request in window
+            await redisConnection.setEx(key, windowMs / 1000, '1');
+            return true;
+        }
+        
+        const count = parseInt(current);
+        if (count >= maxRequests) {
+            return false; // Rate limit exceeded
+        }
+        
+        // Increment count
+        await redisConnection.incr(key);
+        return true;
+        
+    } catch (error) {
+        console.error('Rate limit check error:', error.message);
+        return true; // Allow request on error
+    }
+};
 
 // Rate limiter wrapper that applies based on account tier
-const rateLimiter = (req, res, next) => {
+const rateLimiter = async (req, res, next) => {
     // If paid account, skip rate limiting entirely
     if (req.account && req.account.tier === 'paid') {
         return next();
     }
     
-    // Apply free tier rate limiting
-    return freeRateLimiter(req, res, next);
+    // If rate limiter initialization failed, allow all requests
+    if (initFailed) {
+        return next();
+    }
+    
+    // If rate limiter is not ready yet, skip rate limiting temporarily
+    if (!redisConnection) {
+        return next();
+    }
+    
+    // Check rate limit
+    const allowed = await checkRateLimit(req.account.apiKey);
+    
+    if (!allowed) {
+        return res.status(429).json({ 
+            error: 'Rate limit exceeded for free account. Upgrade to paid for unlimited access.' 
+        });
+    }
+    
+    return next();
 };
 
 module.exports = {
     rateLimiter
 };
-

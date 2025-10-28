@@ -20,6 +20,9 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Frontend static files
+app.use(express.static('public'));
+
 // Static file serving for temporary PDFs
 app.use('/temp', express.static('temp'));
 

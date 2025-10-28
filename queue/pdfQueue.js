@@ -1,7 +1,7 @@
 const { Queue } = require('bullmq');
-const { createRedisConnection } = require('../config/redis');
+const { createBullMQConnection } = require('../config/redis');
 
-const connection = createRedisConnection();
+const connection = createBullMQConnection();
 
 const pdfQueue = new Queue('pdf-generation', {
     connection,

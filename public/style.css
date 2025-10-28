@@ -1,0 +1,35 @@
+/* Additional styles for nicer UI */
+:root {
+    --bg: #0b1020;
+    --panel: #121933;
+    --muted: #aab1c6;
+    --text: #e6e9f2;
+    --border: #20284a;
+    --primary: #4f46e5;
+}
+
+* { box-sizing: border-box; }
+
+body { background: var(--bg); color: var(--text); }
+.container { max-width: 960px; margin: 0 auto; padding: 24px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+
+label { color: var(--muted); font-size: 13px; }
+input, select {
+    border: 1px solid #2a3358;
+    background: #0e1430;
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+button { background: var(--primary); color: white; border: 0; border-radius: 8px; padding: 10px 14px; }
+button.secondary { background: #253056; }
+
+#result a { display: inline-block; margin-top: 6px; }
+
+@media (max-width: 720px) {
+    .row { grid-template-columns: 1fr !important; }
+}
+
+

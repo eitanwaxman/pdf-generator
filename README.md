@@ -39,15 +39,29 @@ SERVER_URL=http://localhost:3000
 MAX_PDF_SIZE_MB=50
 ```
 
-5. Start Redis server (if running locally):
-```bash
-redis-server
-```
+5. **Redis Setup:**
+
+   **Option A: Local Redis (Windows)**
+   ```bash
+   # Download Redis for Windows from: https://github.com/microsoftarchive/redis/releases
+   # Or use WSL to run Redis
+   # Or use Docker:
+   docker run -d -p 6379:6379 redis:latest
+   ```
+
+   **Option B: Cloud Redis (Recommended for development)**
+   - Use Redis Cloud (free tier available): https://redis.com/redis-enterprise-cloud/
+   - Set `REDIS_URL` in your `.env` file:
+   ```env
+   REDIS_URL=redis://username:password@redis-cloud-host:port
+   ```
 
 6. Start the API server:
 ```bash
 node app.js
 ```
+
+**Note:** If Redis is not available, the app will start without rate limiting, but the worker will fail to connect to Redis.
 
 ## API Documentation
 

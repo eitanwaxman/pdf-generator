@@ -1,9 +1,9 @@
 const { Worker } = require('bullmq');
-const { createRedisConnection } = require('../config/redis');
+const { createBullMQConnection } = require('../config/redis');
 const { generatePdf, isValidUrl } = require('../services/pdfService');
 const fs = require('fs');
 
-const connection = createRedisConnection();
+const connection = createBullMQConnection();
 
 const worker = new Worker(
     'pdf-generation',
@@ -63,6 +63,11 @@ worker.on('failed', (job, err) => {
 
 worker.on('error', (err) => {
     console.error('Worker error:', err);
+    if (err.message && err.message.includes('ECONNREFUSED')) {
+        console.error('Redis connection failed. Please start Redis server.');
+        console.error('On Windows: Download and run Redis from https://redis.io/download');
+        console.error('Or use a cloud Redis service and set REDIS_URL in .env');
+    }
 });
 
 module.exports = worker;
