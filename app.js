@@ -1,165 +1,55 @@
-//TODO - repond with a temp file url as well (option)
+require('dotenv').config();
 
 const express = require('express');
-const puppeteer = require('puppeteer');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
+// Middleware
+const { authenticate } = require('./middleware/auth');
+const { rateLimiter } = require('./middleware/rateLimiter');
+
+// Routes
+const jobsRouter = require('./routes/v1/jobs');
+
+// Worker
+const worker = require('./workers/pdfWorker');
 
 const app = express();
 const port = process.env.PORT || 3000;
-const SERVER_URL = "https://pdf-generator-dev.onrender.com" //"https://pdf-generator-new.onrender.com" //
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static file serving for temporary PDFs
 app.use('/temp', express.static('temp'));
 
-// Add global process error logging to capture uncaught errors and rejections
-process.on('unhandledRejection', (reason, p) => {
-    // Error logged but not displayed
-});
-process.on('uncaughtException', (err) => {
-    // Error logged but not displayed
-});
+// API Routes
+app.use('/api/v1/jobs', authenticate, rateLimiter, jobsRouter);
 
-app.post('/', async (req, res) => {
-    const { url, options } = req.body;
-
-    if (!isValidUrl(url)) {
-        return res.status(400).send('Vaild URL is required');
-    }
-
-    try {
-        const PDF = await exportWebsiteAsPdf(url, options);
-        res.send(PDF);
-    } catch (error) {
-        res.status(500).send('Internal Server Error')
-    }
-
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
 });
 
+// Start server
 app.listen(port, () => {
+    console.log(`PDF Generator API Server running on port ${port}`);
+    console.log('API Endpoints:');
+    console.log(`  POST /api/v1/jobs - Create a PDF generation job`);
+    console.log(`  GET /api/v1/jobs/:jobId - Get job status and result`);
+    console.log(`  DELETE /api/v1/jobs/:jobId - Cancel a job`);
+    console.log('\nWorker started and ready to process jobs');
 });
 
-let browser;
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM signal received, closing server');
+    await worker.close();
+    process.exit(0);
+});
 
-async function exportWebsiteAsPdf(websiteUrl, options) {
-    const { margin, format, free, delay, waitForDataLoad } = options || {};
-
-    const browser = await getBrowser();
-
-    const page = await browser.newPage();
-
-    await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
-
-    await page.evaluate(() => {
-        window.scrollBy(0, document.body.scrollHeight);
-    });
-
-    const waitMs = (delay && delay <= 10000) ? delay : 2000;
-    await timeout(waitMs);
-
-    if (waitForDataLoad) {
-        const iframe = await page.waitForSelector('iframe', { timeout: 60000 });
-        const frame = await iframe.contentFrame();
-
-        if (frame) {
-            await frame.waitForSelector("#loadedIndicator", { timeout: 60000 });
-        } else {
-            throw new Error('Could not find iframe content');
-        }
-    }
-
-
-    await page.emulateMediaType('screen');
-
-    await page.evaluate(removeWixAds);
-    await page.evaluate(removeCookieBanner);
-
-    if (free) {
-        await page.evaluate(addWatermark);
-    }
-
-    const pdfBuffer = await page.pdf({
-        margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
-        printBackground: true,
-        format: format || 'A4',
-    });
-
-    storeTemporaryUrl(pdfBuffer);
-
-    await page.close(); //browser.close();
-
-    return pdfBuffer;
-}
-
-function removeWixAds() {
-    const wixAds = document.getElementById('WIX_ADS');
-    if (wixAds) wixAds.remove();
-}
-
-function removeCookieBanner() {
-    const cookieBanner = document.querySelector('.consent-banner-root');
-    if (cookieBanner) cookieBanner.remove();
-}
-
-function addWatermark() {
-    const uppermostElement = document.body.children[0];
-    const watermark = document.createElement('div');
-
-    const watermarkLink = document.createElement('a');
-    watermarkLink.href = 'https://thewixwiz.com/wix-apps';
-    watermarkLink.target = '_blank';
-    watermarkLink.textContent = "Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more";
-    watermarkLink.style.color = 'inherit';
-    watermarkLink.style.fontSize = '16px';
-    watermarkLink.style.textDecoration = 'none';
-    watermark.appendChild(watermarkLink);
-
-    watermark.style.width = '100%';
-    watermark.style.textAlign = 'center';
-    watermark.style.opacity = '0.7';
-    watermark.style.marginTop = '20px';
-    watermark.style.fontFamily = 'Arial';
-    watermark.style.zIndex = '1000';
-    document.body.insertBefore(watermark, uppermostElement);
-}
-
-function storeTemporaryUrl(pdfBuffer) {
-    const filename = `${uuidv4()}.pdf`;
-    const filePath = path.join(__dirname, 'temp', filename);
-
-    fs.writeFileSync(filePath, pdfBuffer);
-
-    const fileUrl = `${SERVER_URL}/temp/${filename}`;
-
-    setTimeout(() => {
-        try {
-            fs.unlinkSync(filePath);
-        } catch (err) {
-            // Error removing file
-        }
-    }, 60000);
-}
-
-async function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function isValidUrl(url) {
-    var urlPattern = /^(http(s):\/\/.)[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$/;
-    return urlPattern.test(url);
-}
-
-async function getBrowser() {
-    if (!browser) {
-        browser = await puppeteer.launch({ headless: 'new' });
-        process.on('exit', async () => {
-            if (browser) {
-                await browser.close();
-            }
-        });
-    }
-    return browser;
-}
+process.on('SIGINT', async () => {
+    console.log('SIGINT signal received, closing server');
+    await worker.close();
+    process.exit(0);
+});
