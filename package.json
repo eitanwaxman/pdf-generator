@@ -4,6 +4,11 @@
   "description": "",
   "main": "app.js",
   "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "dev:frontend": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "jest --testPathPattern=test/load",
     "test:load": "jest test/load",
     "test:load:basic": "jest test/load/basic-load.test.js",
@@ -17,18 +22,35 @@
     "node": ">=16.3.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.77.0",
     "body-parser": "^1.20.2",
     "bullmq": "^5.62.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "crypto": "^1.0.1",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "ioredis": "^5.8.2",
+    "lucide-react": "^0.548.0",
     "path": "^0.12.7",
+    "prismjs": "^1.30.0",
     "puppeteer": "^22.8.2",
     "redis": "^5.9.0",
+    "tailwind-merge": "^3.3.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/node": "^24.9.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "autoprefixer": "^10.4.21",
     "axios": "^1.6.2",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
+    "postcss": "^8.5.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^3.4.18",
+    "tailwindcss-animate": "^1.0.7",
+    "vite": "^7.1.12"
   }
 }

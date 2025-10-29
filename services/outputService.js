@@ -37,29 +37,28 @@ function removeCookieBanner() {
 
 /**
  * Add watermark to the page
- * @param {string} watermarkUrl - URL for the watermark link
- * @param {string} watermarkText - Text to display in the watermark
+ * @param {object} watermarkConfig - Watermark configuration object from constants
  * @returns {void}
  */
-function addWatermark(watermarkUrl, watermarkText) {
+function addWatermark(watermarkConfig) {
     const uppermostElement = document.body.children[0];
     const watermark = document.createElement('div');
 
     const watermarkLink = document.createElement('a');
-    watermarkLink.href = watermarkUrl;
+    watermarkLink.href = watermarkConfig.URL;
     watermarkLink.target = '_blank';
-    watermarkLink.textContent = watermarkText;
+    watermarkLink.textContent = watermarkConfig.TEXT;
     watermarkLink.style.color = 'inherit';
-    watermarkLink.style.fontSize = WATERMARK.FONT_SIZE;
+    watermarkLink.style.fontSize = watermarkConfig.FONT_SIZE;
     watermarkLink.style.textDecoration = 'none';
     watermark.appendChild(watermarkLink);
 
-    watermark.style.width = WATERMARK.WIDTH;
+    watermark.style.width = watermarkConfig.WIDTH;
     watermark.style.textAlign = 'center';
-    watermark.style.opacity = WATERMARK.OPACITY;
-    watermark.style.marginTop = WATERMARK.MARGIN_TOP;
+    watermark.style.opacity = watermarkConfig.OPACITY;
+    watermark.style.marginTop = watermarkConfig.MARGIN_TOP;
     watermark.style.fontFamily = 'Arial';
-    watermark.style.zIndex = WATERMARK.Z_INDEX;
+    watermark.style.zIndex = watermarkConfig.Z_INDEX;
     document.body.insertBefore(watermark, uppermostElement);
 }
 
@@ -229,7 +228,7 @@ async function preparePageForOutput({ url, account, platform, viewport = null, m
         // Add watermark for free tier
         const shouldAddWatermark = account && account.tier === 'free';
         if (shouldAddWatermark) {
-            await page.evaluate(addWatermark, WATERMARK.URL, WATERMARK.TEXT);
+            await page.evaluate(addWatermark, WATERMARK);
         }
 
         return page;
