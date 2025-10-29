@@ -30,7 +30,13 @@ async function testPdfGeneration() {
                         bottom: '50px',
                         left: '50px'
                     },
-                    responseType: 'url'
+                    responseType: 'url',
+                    // New: key-value pairs appended as query params to the URL
+                    data: {
+                        utm_source: 'example-client',
+                        debug: true,
+                        version: 1
+                    }
                 }
             })
         });

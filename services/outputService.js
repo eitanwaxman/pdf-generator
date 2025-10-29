@@ -386,10 +386,27 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
 async function generateOutput({ url, options = {}, account }) {
     const outputType = options.outputType || 'pdf'; // Default to PDF for backward compatibility
     const platform = options.platform; // Extract shared platform option
+
+    // Append options.data as query params to the URL if provided
+    let finalUrl = url;
+    if (options.data && typeof options.data === 'object') {
+        try {
+            const urlObj = new URL(url);
+            for (const key of Object.keys(options.data)) {
+                const value = options.data[key];
+                if (value === undefined || typeof value === 'function' || typeof value === 'object') continue;
+                urlObj.searchParams.append(key, String(value));
+            }
+            finalUrl = urlObj.toString();
+        } catch (e) {
+            // If URL constructor fails, fallback to original url
+            finalUrl = url;
+        }
+    }
     
     if (outputType === 'screenshot') {
         return await generateScreenshot({ 
-            url, 
+            url: finalUrl, 
             screenshotOptions: { 
                 ...options.screenshotOptions,
                 platform  // Pass platform explicitly to nested options
@@ -398,7 +415,7 @@ async function generateOutput({ url, options = {}, account }) {
         });
     } else {
         return await generatePdf({ 
-            url, 
+            url: finalUrl, 
             pdfOptions: { 
                 ...(options.pdfOptions || options),  // Support both structures for backward compatibility
                 platform  // Pass platform explicitly to nested options

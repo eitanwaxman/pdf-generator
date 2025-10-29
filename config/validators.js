@@ -128,6 +128,28 @@ function validatePdfOptions(options) {
 }
 
 /**
+ * Validate data object for query params
+ * @param {object} data - Key-value pairs to append as query params
+ * @returns {boolean}
+ */
+function isValidDataObject(data) {
+    if (!data) {
+        return true; // Optional
+    }
+    if (typeof data !== 'object' || Array.isArray(data)) {
+        return false;
+    }
+    for (const key of Object.keys(data)) {
+        const value = data[key];
+        const valueType = typeof value;
+        if (value === undefined || valueType === 'function' || valueType === 'object') {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
  * Validate URL
  * @param {string} url - URL to validate
  * @returns {boolean}
@@ -212,7 +234,7 @@ function validateJobOptions(options) {
         return { valid: true, errors: [] };
     }
     
-    const { outputType, responseType, platform, pdfOptions, screenshotOptions } = options;
+    const { outputType, responseType, platform, pdfOptions, screenshotOptions, data } = options;
     
     // Validate shared options
     if (!isValidOutputType(outputType)) {
@@ -225,6 +247,11 @@ function validateJobOptions(options) {
     
     if (!isValidPlatform(platform)) {
         errors.push(`Invalid platform: ${platform}. Must be one of: ${PLATFORM_LIST.join(', ')}`);
+    }
+    
+    // Validate data
+    if (!isValidDataObject(data)) {
+        errors.push('Invalid data: must be an object of primitive values (string, number, boolean, null)');
     }
     
     // Validate output-specific options
@@ -260,6 +287,7 @@ module.exports = {
     isValidUrl,
     isValidOutputType,
     validateScreenshotOptions,
-    validateJobOptions
+    validateJobOptions,
+    isValidDataObject
 };
 

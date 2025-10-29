@@ -101,7 +101,8 @@ curl -X POST http://localhost:3000/api/v1/jobs \
       "format": "A4",
       "margin": {"top": "50px", "bottom": "50px", "left": "50px", "right": "50px"},
       "platform": "wix",
-      "responseType": "buffer"
+      "responseType": "buffer",
+      "data": {"utm_source": "docs", "debug": true, "version": 1}
     }
   }'
 ```
@@ -186,6 +187,7 @@ curl -X DELETE http://localhost:3000/api/v1/jobs/:jobId \
 - `options.margin`: PDF margins - default: {top: "100px", right: "50px", bottom: "100px", left: "50px"}
 - `options.platform`: Platform-specific optimizations (e.g., "wix" for Wix ad/banner removal) - default: undefined
 - `options.responseType`: "buffer" or "url" - default: "buffer"
+- `options.data`: Object of key-value pairs to append as query params to the main `url` before generating the output. Values must be primitives (string, number, boolean, null).
 
 ### Account Tiers
 
