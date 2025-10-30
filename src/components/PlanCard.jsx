@@ -9,7 +9,8 @@ export default function PlanCard({
   features, 
   isCurrentPlan,
   onSelect,
-  loading
+  loading,
+  disabled = false
 }) {
   return (
     <Card className={`relative ${isCurrentPlan ? 'border-primary border-2' : ''}`}>
@@ -53,12 +54,21 @@ export default function PlanCard({
         
         <Button
           onClick={onSelect}
-          disabled={isCurrentPlan || loading}
+          disabled={isCurrentPlan || loading || disabled}
           className="w-full"
-          variant={isCurrentPlan ? 'outline' : 'default'}
+          variant={isCurrentPlan ? 'outline' : disabled ? 'outline' : 'default'}
         >
-          {loading ? 'Processing...' : isCurrentPlan ? 'Current Plan' : 'Select Plan'}
+          {loading ? 'Processing...' : 
+           isCurrentPlan ? 'Current Plan' : 
+           disabled ? 'Cancel Current Plan First' :
+           'Select Plan'}
         </Button>
+        
+        {disabled && !isCurrentPlan && (
+          <p className="text-xs text-muted-foreground text-center -mt-2">
+            Cancel your current subscription in Settings before changing plans
+          </p>
+        )}
       </CardContent>
     </Card>
   )

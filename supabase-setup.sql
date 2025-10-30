@@ -108,6 +108,13 @@ ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS credits_used INTEGER N
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS overage_enabled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS subscription_period_start TIMESTAMPTZ DEFAULT NOW();
 
+-- Add Stripe-related columns for subscription management
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS stripe_price_id TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS subscription_period_end TIMESTAMPTZ;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS stripe_metered_item_id TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS cancel_at_period_end BOOLEAN DEFAULT false;
+
 -- Add tier constraint if not exists
 DO $$ 
 BEGIN

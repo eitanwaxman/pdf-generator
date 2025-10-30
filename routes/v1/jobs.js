@@ -3,6 +3,8 @@ const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
 const { validateJobOptions, isValidUrl } = require('../../config/validators');
 const { QUEUE } = require('../../config/constants');
 const { supabase } = require('../../config/supabase');
+const { ensureCurrentBillingPeriod, checkCreditAvailability } = require('../../services/creditService');
+const { reportUsage } = require('../../services/stripeService');
 
 const router = express.Router();
 
@@ -33,42 +35,16 @@ router.post('/', async (req, res) => {
     }
 
     try {
-        // Check credit limits before creating job
-        const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('tier, monthly_credits, credits_used, overage_enabled')
-            .eq('id', req.account.userId)
-            .single();
+        // Ensure user is in current billing period (lazy evaluation fallback)
+        let profile = await ensureCurrentBillingPeriod(req.account.userId);
         
-        if (profileError) {
-            console.error('Error fetching profile:', profileError);
-            
-            // Provide helpful error message for missing column
-            if (profileError.code === '42703' && profileError.message.includes('monthly_credits')) {
-                return res.status(500).json({ 
-                    error: 'Database schema mismatch',
-                    message: 'The monthly_credits column is missing from the user_profiles table.',
-                    solution: 'Please run the migration SQL in your Supabase SQL Editor. See migration-add-credits.sql file.',
-                    details: profileError.message
-                });
-            }
-            
-            return res.status(500).json({ error: 'Failed to verify account credits' });
-        }
+        // Check credit availability
+        const creditCheck = checkCreditAvailability(profile);
         
-        const creditsRemaining = profile.monthly_credits - profile.credits_used;
-        
-        // Check if user has credits remaining or overage enabled
-        if (creditsRemaining <= 0 && !profile.overage_enabled) {
+        if (!creditCheck.allowed) {
             return res.status(429).json({ 
-                error: 'Credit limit reached',
-                details: {
-                    monthly_credits: profile.monthly_credits,
-                    credits_used: profile.credits_used,
-                    credits_remaining: 0,
-                    overage_enabled: false,
-                    message: 'You have used all your monthly credits. Enable overage in settings or upgrade your plan.'
-                }
+                error: creditCheck.reason,
+                details: creditCheck.details
             });
         }
         
@@ -76,7 +52,7 @@ router.post('/', async (req, res) => {
         const jobId = await addPdfJob(url, options, req.account);
         const outputType = options?.outputType || 'pdf';
         
-        // Increment credits_used counter using service role
+        // Increment credits_used counter
         const { error: incrementError } = await supabase
             .from('user_profiles')
             .update({ credits_used: profile.credits_used + 1 })
@@ -87,19 +63,39 @@ router.post('/', async (req, res) => {
             // Don't fail the job, but log the error
         }
         
-        const newCreditsRemaining = Math.max(0, creditsRemaining - 1);
+        // Report overage usage to Stripe if applicable
+        if (creditCheck.isOverage && profile.stripe_metered_item_id) {
+            try {
+                await reportUsage(profile.stripe_metered_item_id, 1);
+                console.log(`Reported overage usage to Stripe for user ${req.account.userId}`);
+            } catch (stripeError) {
+                console.error('Error reporting usage to Stripe:', stripeError);
+                // Don't fail the job, overage will be tracked in credits_used
+            }
+        }
         
-        res.status(202).json({ 
+        const creditsRemaining = Math.max(0, profile.monthly_credits - profile.credits_used - 1);
+        const isOverage = creditCheck.isOverage || false;
+        
+        const response = { 
             jobId, 
             status: 'pending',
             outputType,
             message: 'Job created successfully',
             credits: {
                 used: profile.credits_used + 1,
-                remaining: newCreditsRemaining,
+                remaining: creditsRemaining,
                 monthly_limit: profile.monthly_credits
             }
-        });
+        };
+        
+        // Add overage info if applicable
+        if (isOverage) {
+            response.credits.overage = true;
+            response.credits.overage_amount = profile.credits_used + 1 - profile.monthly_credits;
+        }
+        
+        res.status(202).json(response);
     } catch (error) {
         console.error('Error creating job:', {
             message: error.message,

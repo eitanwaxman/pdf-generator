@@ -12,6 +12,7 @@ const jobsRouter = require('./routes/v1/jobs');
 const authRouter = require('./routes/v1/auth');
 const userRouter = require('./routes/v1/user');
 const billingRouter = require('./routes/internal/billing');
+const stripeWebhookRouter = require('./routes/webhooks/stripe');
 
 // Worker
 const worker = require('./workers/pdfWorker');
@@ -31,6 +32,10 @@ app.use((req, res, next) => {
     
     next();
 });
+
+// IMPORTANT: Webhook route MUST be registered BEFORE body-parser middleware
+// Stripe webhooks require raw body for signature verification
+app.use('/webhooks', stripeWebhookRouter);
 
 // Middleware
 app.use(express.json());

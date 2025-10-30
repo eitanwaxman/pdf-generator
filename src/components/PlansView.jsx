@@ -45,7 +45,7 @@ const PLANS = {
   }
 }
 
-export default function PlansView({ session, profile }) {
+export default function PlansView({ session, profile, onSubscriptionFound }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -54,7 +54,12 @@ export default function PlansView({ session, profile }) {
   
   const handleSelectPlan = async (tier) => {
     if (tier === 'free') {
-      setError('Cannot downgrade to free plan. Please contact support.')
+      setError('Cannot downgrade to free plan. Please cancel your subscription in Settings.')
+      return
+    }
+    
+    if (tier === currentTier && currentTier !== 'free') {
+      setMessage('You are already on this plan.')
       return
     }
     
@@ -75,13 +80,27 @@ export default function PlansView({ session, profile }) {
       const data = await response.json()
       
       if (!response.ok) {
+        // If the error indicates a subscription already exists, trigger the callback
+        if (data.error === 'Subscription exists' && onSubscriptionFound) {
+          onSubscriptionFound()
+          return
+        }
+        
+        // Show friendly error message
+        if (data.message) {
+          throw new Error(data.message)
+        }
         throw new Error(data.error || 'Failed to initiate checkout')
       }
       
-      setMessage(data.note || 'Stripe integration coming soon!')
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setMessage('Checkout session created but no URL returned')
+      }
     } catch (err) {
       setError(err.message || 'Failed to select plan')
-    } finally {
       setLoading(false)
     }
   }
@@ -110,18 +129,24 @@ export default function PlansView({ session, profile }) {
       )}
       
       <div className="grid md:grid-cols-3 gap-6">
-        {Object.entries(PLANS).map(([tier, plan]) => (
-          <PlanCard
-            key={tier}
-            name={plan.name}
-            price={plan.price}
-            credits={plan.credits}
-            features={plan.features}
-            isCurrentPlan={currentTier === tier}
-            onSelect={() => handleSelectPlan(tier)}
-            loading={loading}
-          />
-        ))}
+        {Object.entries(PLANS).map(([tier, plan]) => {
+          const isCurrentPlan = currentTier === tier
+          const hasActivePaidPlan = currentTier !== 'free' && currentTier !== tier
+          
+          return (
+            <PlanCard
+              key={tier}
+              name={plan.name}
+              price={plan.price}
+              credits={plan.credits}
+              features={plan.features}
+              isCurrentPlan={isCurrentPlan}
+              onSelect={() => handleSelectPlan(tier)}
+              loading={loading}
+              disabled={hasActivePaidPlan && tier !== 'free'}
+            />
+          )
+        })}
       </div>
       
       <Card>

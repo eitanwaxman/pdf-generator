@@ -7,6 +7,8 @@ import PlansView from './components/PlansView'
 import SettingsView from './components/SettingsView'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
 import { Button } from './components/ui/button'
+import { Alert, AlertDescription } from './components/ui/alert'
+import { CheckCircle, XCircle } from 'lucide-react'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -15,8 +17,32 @@ function App() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [apiKey, setApiKey] = useState(null)
+  const [checkoutStatus, setCheckoutStatus] = useState(null)
 
   useEffect(() => {
+    // Check for checkout status in URL
+    const params = new URLSearchParams(window.location.search)
+    const checkout = params.get('checkout')
+    const sessionId = params.get('session_id')
+    
+    if (checkout === 'success' && sessionId) {
+      setCheckoutStatus('success')
+      setActiveTab('settings')
+      // Clean URL
+      window.history.replaceState({}, '', '/')
+      
+      // Auto-dismiss after 10 seconds
+      setTimeout(() => setCheckoutStatus(null), 10000)
+    } else if (checkout === 'canceled') {
+      setCheckoutStatus('canceled')
+      setActiveTab('plans')
+      // Clean URL
+      window.history.replaceState({}, '', '/')
+      
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => setCheckoutStatus(null), 5000)
+    }
+    
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -39,7 +65,7 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const loadUserData = async (session) => {
+  const loadUserData = async (session, retryCount = 0) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
@@ -69,6 +95,17 @@ function App() {
       }
     } catch (error) {
       console.error('Error loading user data:', error)
+      
+      // Retry once after 2 seconds if this is after a checkout
+      if (retryCount === 0 && checkoutStatus === 'success') {
+        setTimeout(() => loadUserData(session, 1), 2000)
+      }
+    }
+  }
+  
+  const refreshProfile = () => {
+    if (session) {
+      loadUserData(session)
     }
   }
 
@@ -139,6 +176,26 @@ function App() {
           </Button>
         </div>
 
+        {/* Checkout Status Messages */}
+        {checkoutStatus === 'success' && (
+          <Alert className="mb-6 bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              <strong>Payment successful!</strong> Your subscription is being activated. 
+              It may take a few moments to reflect in your account. Please refresh the page if you don't see the update.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {checkoutStatus === 'canceled' && (
+          <Alert variant="destructive" className="mb-6">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>
+              Payment was canceled. You can try again when you're ready.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
@@ -163,7 +220,14 @@ function App() {
           </TabsContent>
 
           <TabsContent value="plans">
-            <PlansView session={session} profile={profile} />
+            <PlansView
+              session={session}
+              profile={profile}
+              onSubscriptionFound={() => {
+                refreshProfile()
+                setActiveTab('settings')
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="settings">
@@ -172,6 +236,7 @@ function App() {
               profile={profile} 
               emailVerified={!!user?.email_confirmed_at}
               onAccountDeleted={handleAccountDeleted}
+              onRefresh={refreshProfile}
             />
           </TabsContent>
         </Tabs>
