@@ -2,7 +2,7 @@ const express = require('express');
 const { verifySupabaseToken } = require('../../middleware/supabaseAuth');
 const { getApiKeyForUser, rotateApiKey, createApiKeyForUser } = require('../../services/apiKeyService');
 const { supabase } = require('../../config/supabase');
-const { createCheckoutSession, cancelSubscription, getSubscription, stripe } = require('../../services/stripeService');
+const { createCheckoutSession, updateSubscriptionPlan, cancelSubscription, getSubscription, stripe } = require('../../services/stripeService');
 const { ensureCurrentBillingPeriod } = require('../../services/creditService');
 
 /**
@@ -249,26 +249,128 @@ router.post('/checkout', async (req, res) => {
         }
         console.log('[checkout] profile:', profile);
         
-        // App-level guard using DB fields
-        if (profile.stripe_subscription_id && 
+        // Check if user has an active subscription
+        const hasActiveSubscription = profile.stripe_subscription_id && 
             profile.subscription_status === 'active' && 
-            profile.tier !== 'free') {
-            console.warn('[checkout] blocked by DB guard: existing active subscription', {
-                stripe_subscription_id: profile.stripe_subscription_id,
-                subscription_status: profile.subscription_status,
-                tier_current: profile.tier,
-                tier_requested: tier
-            });
+            profile.tier !== 'free';
+        
+        if (hasActiveSubscription) {
+            console.log('[checkout] found active subscription, checking if upgrade/downgrade');
+            
+            // If requesting the same tier, return error
             if (profile.tier === tier) {
+                console.warn('[checkout] user already on requested tier:', tier);
                 return res.status(400).json({ 
                     error: 'Already subscribed',
                     message: `You are already subscribed to the ${tier} plan.`
                 });
             }
-            return res.status(400).json({ 
-                error: 'Subscription exists',
-                message: `You already have an active ${profile.tier} subscription. Please cancel your current subscription before changing plans.`
+            
+            // Handle plan change (upgrade or downgrade)
+            console.log('[checkout] initiating plan change:', {
+                from: profile.tier,
+                to: tier,
+                subscriptionId: profile.stripe_subscription_id,
+                cancelAtPeriodEnd: profile.cancel_at_period_end
             });
+            
+            try {
+                // If subscription is marked for cancellation, we need to remove that first
+                if (profile.cancel_at_period_end) {
+                    console.log('[checkout] subscription is marked for cancellation, removing cancellation first');
+                    await stripe.subscriptions.update(profile.stripe_subscription_id, {
+                        cancel_at_period_end: false
+                    });
+                }
+                
+                // Update the subscription plan with proration
+                const updatedSubscription = await updateSubscriptionPlan(
+                    profile.stripe_subscription_id,
+                    tier
+                );
+                
+                console.log('[checkout] subscription updated successfully:', {
+                    id: updatedSubscription.id,
+                    status: updatedSubscription.status,
+                    current_period_start: updatedSubscription.current_period_start,
+                    current_period_end: updatedSubscription.current_period_end
+                });
+                
+                // Determine new credits based on tier
+                const newMonthlyCredits = tier === 'starter' ? 1000 : 5000;
+                
+                // Find the metered item for overage billing
+                const meteredItem = updatedSubscription.items.data.find(
+                    item => item.price.recurring?.usage_type === 'metered'
+                );
+                
+                // Safely convert timestamps to ISO strings
+                let periodStart = null;
+                let periodEnd = null;
+                
+                if (updatedSubscription.current_period_start) {
+                    const startDate = new Date(updatedSubscription.current_period_start * 1000);
+                    if (!isNaN(startDate.getTime())) {
+                        periodStart = startDate.toISOString();
+                    }
+                }
+                
+                if (updatedSubscription.current_period_end) {
+                    const endDate = new Date(updatedSubscription.current_period_end * 1000);
+                    if (!isNaN(endDate.getTime())) {
+                        periodEnd = endDate.toISOString();
+                    }
+                }
+                
+                console.log('[checkout] converted dates:', {
+                    periodStart,
+                    periodEnd
+                });
+                
+                // Prepare update data
+                const updateData = {
+                    tier,
+                    monthly_credits: newMonthlyCredits,
+                    stripe_price_id: updatedSubscription.items.data[0].price.id,
+                    stripe_metered_item_id: meteredItem ? meteredItem.id : null,
+                    subscription_status: updatedSubscription.status,
+                    cancel_at_period_end: false // Remove cancellation flag
+                };
+                
+                // Only add dates if they're valid
+                if (periodStart) updateData.subscription_period_start = periodStart;
+                if (periodEnd) updateData.subscription_period_end = periodEnd;
+                
+                // Update local database with new plan details
+                const { error: updateError } = await supabase
+                    .from('user_profiles')
+                    .update(updateData)
+                    .eq('id', req.user.id);
+                
+                if (updateError) {
+                    console.error('[checkout] error updating local DB after plan change:', updateError);
+                    throw updateError;
+                }
+                
+                console.log('[checkout] plan change complete, DB updated');
+                
+                // Return success response (no redirect needed)
+                return res.json({
+                    updated: true,
+                    message: `Successfully ${profile.tier === 'starter' ? 'upgraded' : 'downgraded'} to ${tier} plan`,
+                    tier,
+                    subscription: {
+                        id: updatedSubscription.id,
+                        status: updatedSubscription.status
+                    }
+                });
+            } catch (updateError) {
+                console.error('[checkout] error updating subscription plan:', updateError);
+                return res.status(500).json({
+                    error: 'Failed to update plan',
+                    message: updateError.message || 'Could not update your subscription. Please try again.'
+                });
+            }
         }
         
         // Stripe-level guard: check live subscriptions for this customer

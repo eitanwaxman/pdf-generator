@@ -227,6 +227,11 @@ async function handleSubscriptionUpdated(subscription) {
         newMonthlyCredits = 5000;
     }
     
+    // Log plan changes for debugging
+    if (newTier !== profile.tier) {
+        console.log(`✨ Plan change detected: ${profile.tier} → ${newTier} for user ${profile.id}`);
+    }
+    
     // Find metered item
     const meteredItem = subscription.items.data.find(
         item => item.price.recurring?.usage_type === 'metered'

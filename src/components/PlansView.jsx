@@ -93,11 +93,24 @@ export default function PlansView({ session, profile, onSubscriptionFound }) {
         throw new Error(data.error || 'Failed to initiate checkout')
       }
       
-      // Redirect to Stripe Checkout
+      // Check if this was a plan update (upgrade/downgrade)
+      if (data.updated) {
+        setMessage(data.message || `Successfully changed to ${tier} plan`)
+        setLoading(false)
+        
+        // Refresh the page to show updated plan
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500)
+        return
+      }
+      
+      // Redirect to Stripe Checkout for new subscriptions
       if (data.url) {
         window.location.href = data.url
       } else {
         setMessage('Checkout session created but no URL returned')
+        setLoading(false)
       }
     } catch (err) {
       setError(err.message || 'Failed to select plan')
@@ -131,7 +144,13 @@ export default function PlansView({ session, profile, onSubscriptionFound }) {
       <div className="grid md:grid-cols-3 gap-6">
         {Object.entries(PLANS).map(([tier, plan]) => {
           const isCurrentPlan = currentTier === tier
-          const hasActivePaidPlan = currentTier !== 'free' && currentTier !== tier
+          
+          // Determine if this is an upgrade or downgrade
+          const tierOrder = { free: 0, starter: 1, pro: 2 }
+          const currentTierOrder = tierOrder[currentTier] || 0
+          const thisTierOrder = tierOrder[tier] || 0
+          const isUpgrade = thisTierOrder > currentTierOrder
+          const isDowngrade = thisTierOrder < currentTierOrder && tier !== 'free'
           
           return (
             <PlanCard
@@ -141,9 +160,11 @@ export default function PlansView({ session, profile, onSubscriptionFound }) {
               credits={plan.credits}
               features={plan.features}
               isCurrentPlan={isCurrentPlan}
+              isUpgrade={isUpgrade}
+              isDowngrade={isDowngrade}
               onSelect={() => handleSelectPlan(tier)}
               loading={loading}
-              disabled={hasActivePaidPlan && tier !== 'free'}
+              disabled={false}
             />
           )
         })}

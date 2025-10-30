@@ -109,6 +109,89 @@ async function createCheckoutSession(userId, tier, email, customerId = null) {
 }
 
 /**
+ * Update subscription plan with proration
+ * @param {string} subscriptionId - Stripe subscription ID
+ * @param {string} newTier - New tier ('starter' or 'pro')
+ * @returns {Promise<Object>} Updated subscription object
+ */
+async function updateSubscriptionPlan(subscriptionId, newTier) {
+    try {
+        // Determine new price IDs based on tier
+        const newFixedPriceId = newTier === 'starter' 
+            ? process.env.STRIPE_STARTER_PRICE_ID 
+            : process.env.STRIPE_PRO_PRICE_ID;
+        
+        const newMeteredPriceId = newTier === 'starter'
+            ? process.env.STRIPE_STARTER_OVERAGE_PRICE_ID
+            : process.env.STRIPE_PRO_OVERAGE_PRICE_ID;
+        
+        if (!newFixedPriceId || !newMeteredPriceId) {
+            throw new Error('Stripe price IDs not configured for new tier');
+        }
+        
+        // Retrieve current subscription to get item IDs
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items.data.price']
+        });
+        
+        // Find the fixed and metered items
+        const fixedItem = subscription.items.data.find(
+            item => item.price.recurring?.usage_type !== 'metered'
+        );
+        const meteredItem = subscription.items.data.find(
+            item => item.price.recurring?.usage_type === 'metered'
+        );
+        
+        if (!fixedItem || !meteredItem) {
+            throw new Error('Could not find subscription items');
+        }
+        
+        console.log('Updating subscription:', {
+            subscriptionId,
+            currentTier: fixedItem.price.id,
+            newTier,
+            newFixedPriceId,
+            newMeteredPriceId
+        });
+        
+        // Update subscription with proration
+        // Use 'always_invoice' to immediately charge/credit the prorated amount
+        const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+            items: [
+                {
+                    id: fixedItem.id,
+                    price: newFixedPriceId
+                },
+                {
+                    id: meteredItem.id,
+                    price: newMeteredPriceId
+                }
+            ],
+            proration_behavior: 'always_invoice',
+            billing_cycle_anchor: 'unchanged',
+            cancel_at_period_end: false // Remove any cancellation if exists
+        });
+        
+        // Retrieve the updated subscription with expanded data to get fresh period dates
+        const refreshedSubscription = await stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items.data.price']
+        });
+        
+        console.log('Subscription updated successfully:', {
+            id: refreshedSubscription.id,
+            status: refreshedSubscription.status,
+            current_period_start: refreshedSubscription.current_period_start,
+            current_period_end: refreshedSubscription.current_period_end
+        });
+        
+        return refreshedSubscription;
+    } catch (error) {
+        console.error('Error updating subscription plan:', error);
+        throw error;
+    }
+}
+
+/**
  * Cancel a subscription at period end
  * @param {string} subscriptionId - Stripe subscription ID
  * @returns {Promise<Object>} Updated subscription object
@@ -190,6 +273,7 @@ module.exports = {
     stripe,
     createCustomer,
     createCheckoutSession,
+    updateSubscriptionPlan,
     cancelSubscription,
     getSubscription,
     reportUsage,

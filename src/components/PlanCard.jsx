@@ -8,10 +8,26 @@ export default function PlanCard({
   credits, 
   features, 
   isCurrentPlan,
+  isUpgrade = false,
+  isDowngrade = false,
   onSelect,
   loading,
   disabled = false
 }) {
+  const getButtonText = () => {
+    if (loading) return 'Processing...'
+    if (isCurrentPlan) return 'Current Plan'
+    if (isUpgrade) return `Upgrade to ${name}`
+    if (isDowngrade) return `Downgrade to ${name}`
+    return 'Select Plan'
+  }
+  
+  const getButtonVariant = () => {
+    if (isCurrentPlan) return 'outline'
+    if (isUpgrade) return 'default'
+    if (isDowngrade) return 'outline'
+    return 'default'
+  }
   return (
     <Card className={`relative ${isCurrentPlan ? 'border-primary border-2' : ''}`}>
       {isCurrentPlan && (
@@ -56,17 +72,20 @@ export default function PlanCard({
           onClick={onSelect}
           disabled={isCurrentPlan || loading || disabled}
           className="w-full"
-          variant={isCurrentPlan ? 'outline' : disabled ? 'outline' : 'default'}
+          variant={getButtonVariant()}
         >
-          {loading ? 'Processing...' : 
-           isCurrentPlan ? 'Current Plan' : 
-           disabled ? 'Cancel Current Plan First' :
-           'Select Plan'}
+          {getButtonText()}
         </Button>
         
-        {disabled && !isCurrentPlan && (
+        {isUpgrade && !isCurrentPlan && (
           <p className="text-xs text-muted-foreground text-center -mt-2">
-            Cancel your current subscription in Settings before changing plans
+            Only pay the prorated difference
+          </p>
+        )}
+        
+        {isDowngrade && !isCurrentPlan && (
+          <p className="text-xs text-muted-foreground text-center -mt-2">
+            Receive prorated credit
           </p>
         )}
       </CardContent>
