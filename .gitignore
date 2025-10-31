@@ -50,7 +50,7 @@ temp/*.pdf
 **/temp/*.pdf
 
 # Puppeteer and Chrome caches
-.cache/
+# Note: Root .cache/ handled separately below to allow .cache/puppeteer/.gitkeep
 **/.cache/
 puppeteer-cache/
 *.chrome-user-data
@@ -104,7 +104,7 @@ redis-data/
 .yarn-integrity
 
 # parcel-bundler cache
-.cache
+# Note: Root .cache handled separately below to allow .cache/puppeteer/.gitkeep
 .parcel-cache
 
 # Next.js (if using)
@@ -129,3 +129,11 @@ dist/
 
 # SvelteKit (if using)
 .svelte-kit
+
+# Keep root `.cache/puppeteer` folder in repo but ignore its contents
+# Un-ignore root .cache/ directory (overrides **/.cache/ above)
+!/.cache/
+/.cache/*
+!/.cache/puppeteer/
+/.cache/puppeteer/*
+!/.cache/puppeteer/.gitkeep
