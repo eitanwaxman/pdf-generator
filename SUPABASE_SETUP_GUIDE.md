@@ -1,4 +1,4 @@
-# Supabase Setup Guide for PDF Generator
+# Supabase Setup Guide for Docuskribe
 
 This guide walks you through setting up Supabase for user authentication and API key management.
 
@@ -8,7 +8,7 @@ This guide walks you through setting up Supabase for user authentication and API
 2. Click "New Project"
 3. Choose your organization
 4. Enter project details:
-   - **Name**: pdf-generator (or your preferred name)
+   - **Name**: docuskribe (or your preferred name)
    - **Database Password**: Generate a strong password (save it!)
    - **Region**: Choose closest to your users
    - **Pricing Plan**: Free tier is sufficient to start
@@ -249,7 +249,7 @@ For production, you'll want to use a custom email provider instead of Supabase's
 
 **Setup Complete!** 🎉
 
-Your PDF Generator now has:
+Docuskribe now has:
 - ✅ User authentication (email/password + magic link)
 - ✅ Email verification
 - ✅ Automatic API key generation

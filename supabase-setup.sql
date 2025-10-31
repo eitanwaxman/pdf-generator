@@ -1,4 +1,4 @@
--- Supabase Database Setup for PDF Generator
+-- Supabase Database Setup for Docuskribe
 -- Run these SQL commands in your Supabase SQL Editor
 
 -- 1. Create user_profiles table

@@ -7,6 +7,7 @@ export default function PlanCard({
   price, 
   credits, 
   features, 
+  specs,
   isCurrentPlan,
   isUpgrade = false,
   isDowngrade = false,
@@ -59,7 +60,7 @@ export default function PlanCard({
           )}
         </div>
         
-        <ul className="space-y-2 py-4">
+        <ul className="space-y-2 py-4 border-b pb-4">
           {features.map((feature, index) => (
             <li key={index} className="flex items-start gap-2 text-sm">
               <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
@@ -67,6 +68,46 @@ export default function PlanCard({
             </li>
           ))}
         </ul>
+        
+        {specs && (
+          <div className="space-y-3 pt-4">
+            <h4 className="text-sm font-semibold text-foreground">Technical Specs</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <tbody className="space-y-2">
+                  <tr className="border-b">
+                    <td className="py-2 pr-4 text-muted-foreground">Max Pages per PDF</td>
+                    <td className="py-2 font-medium text-right">{specs.maxPagesPerPdf}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4 text-muted-foreground">Rate Limit</td>
+                    <td className="py-2 font-medium text-right">{specs.rateLimitPerMinute}/min</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4 text-muted-foreground">Concurrent Jobs</td>
+                    <td className="py-2 font-medium text-right">{specs.concurrentJobs}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4 text-muted-foreground">Queue Priority</td>
+                    <td className="py-2 font-medium text-right">{specs.queuePriority}/10</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4 text-muted-foreground">Max Credits/Month</td>
+                    <td className="py-2 font-medium text-right">{specs.maxMonthlyCredits}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4 text-muted-foreground">Watermark</td>
+                    <td className="py-2 font-medium text-right">{specs.watermark ? 'Yes' : 'No'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 text-muted-foreground">Overage Billing</td>
+                    <td className="py-2 font-medium text-right">{specs.overage ? 'Available' : 'Not available'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         
         <Button
           onClick={onSelect}

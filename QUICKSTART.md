@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get your PDF Generator up and running in 5 minutes!
+Get Docuskribe up and running in 5 minutes!
 
 ## ⚡ Quick Setup
 

@@ -126,7 +126,7 @@ export default function AuthView() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>PDF Generator Dashboard</CardTitle>
+        <CardTitle>Docuskribe Dashboard</CardTitle>
         <CardDescription>Sign in to access your API key and generate PDFs</CardDescription>
       </CardHeader>
       <CardContent>

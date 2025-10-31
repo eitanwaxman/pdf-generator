@@ -1,5 +1,5 @@
 /**
- * Example client for testing the PDF Generator API
+ * Example client for testing the Docuskribe API
  * Usage: node example-client.js
  */
 
@@ -7,7 +7,7 @@ const apiKey = process.argv[2] || 'test-free-key';
 const baseUrl = process.env.API_URL || 'http://localhost:3000';
 
 async function testPdfGeneration() {
-    console.log('📄 PDF Generator API Client\n');
+    console.log('📄 Docuskribe API Client\n');
     console.log(`Using API Key: ${apiKey}`);
     console.log(`Server: ${baseUrl}\n`);
 

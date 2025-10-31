@@ -1,6 +1,6 @@
 # Load Testing Suite
 
-This directory contains comprehensive load and stress tests for the PDF Generator service.
+This directory contains comprehensive load and stress tests for the Docuskribe service.
 
 ## Test Files
 
@@ -50,7 +50,7 @@ Tests error handling and edge cases:
    docker run -p 6379:6379 redis
    ```
 
-2. Start the PDF Generator server:
+2. Start the Docuskribe server:
    ```bash
    npm start
    # or

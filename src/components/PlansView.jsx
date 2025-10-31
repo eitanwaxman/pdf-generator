@@ -14,7 +14,16 @@ const PLANS = {
       'Watermarked PDFs',
       'Email support',
       'Full documentation'
-    ]
+    ],
+    specs: {
+      maxPagesPerPdf: 1,
+      rateLimitPerMinute: 5,
+      concurrentJobs: 1,
+      queuePriority: 1,
+      maxMonthlyCredits: 50,
+      watermark: true,
+      overage: false
+    }
   },
   starter: {
     name: 'Starter',
@@ -27,7 +36,16 @@ const PLANS = {
       'Priority email support',
       'Optional overage',
       'Full documentation'
-    ]
+    ],
+    specs: {
+      maxPagesPerPdf: 3,
+      rateLimitPerMinute: 10,
+      concurrentJobs: 3,
+      queuePriority: 5,
+      maxMonthlyCredits: 300,
+      watermark: false,
+      overage: true
+    }
   },
   pro: {
     name: 'Pro',
@@ -41,7 +59,16 @@ const PLANS = {
       'Optional overage',
       'Full documentation',
       'Priority processing queue'
-    ]
+    ],
+    specs: {
+      maxPagesPerPdf: 5,
+      rateLimitPerMinute: 15,
+      concurrentJobs: 7,
+      queuePriority: 10,
+      maxMonthlyCredits: 1000,
+      watermark: false,
+      overage: true
+    }
   }
 }
 
@@ -159,6 +186,7 @@ export default function PlansView({ session, profile, onSubscriptionFound }) {
               price={plan.price}
               credits={plan.credits}
               features={plan.features}
+              specs={plan.specs}
               isCurrentPlan={isCurrentPlan}
               isUpgrade={isUpgrade}
               isDowngrade={isDowngrade}

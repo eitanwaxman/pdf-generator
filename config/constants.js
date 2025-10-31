@@ -38,6 +38,14 @@ const PLATFORMS = {
 
 const PLATFORM_LIST = ['wix'];
 
+// Form Factor Options
+const FORM_FACTORS = {
+    DESKTOP: 'desktop',
+    MOBILE: 'mobile'
+};
+
+const FORM_FACTOR_LIST = ['desktop', 'mobile'];
+
 // Response Types
 const RESPONSE_TYPES = {
     BUFFER: 'buffer',
@@ -132,7 +140,7 @@ const WATERMARK = {
     MARGIN_TOP: '20px',
     Z_INDEX: '1000',
     URL: 'https://thewixwiz.com/wix-apps',
-    TEXT: 'Generated using PDF Generator App by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more'
+    TEXT: 'Generated using Docuskribe by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more'
 };
 
 // Default PDF Margin
@@ -180,6 +188,8 @@ module.exports = {
     PDF_FORMATS_LIST,
     PLATFORMS,
     PLATFORM_LIST,
+    FORM_FACTORS,
+    FORM_FACTOR_LIST,
     RESPONSE_TYPES,
     RESPONSE_TYPE_LIST,
     RESULT_TYPES,

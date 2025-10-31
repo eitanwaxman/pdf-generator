@@ -4,7 +4,8 @@
 
 const { 
     PDF_FORMATS_LIST, 
-    PLATFORM_LIST, 
+    PLATFORM_LIST,
+    FORM_FACTOR_LIST,
     RESPONSE_TYPE_LIST, 
     OUTPUT_TYPE_LIST,
     SCREENSHOT_TYPE_LIST 
@@ -26,6 +27,15 @@ function isValidFormat(format) {
  */
 function isValidPlatform(platform) {
     return !platform || PLATFORM_LIST.includes(platform);
+}
+
+/**
+ * Validate form factor
+ * @param {string} formFactor - Form factor to validate
+ * @returns {boolean}
+ */
+function isValidFormFactor(formFactor) {
+    return !formFactor || FORM_FACTOR_LIST.includes(formFactor);
 }
 
 /**
@@ -234,7 +244,7 @@ function validateJobOptions(options) {
         return { valid: true, errors: [] };
     }
     
-    const { outputType, responseType, platform, pdfOptions, screenshotOptions, data } = options;
+    const { outputType, responseType, platform, formFactor, pdfOptions, screenshotOptions, data } = options;
     
     // Validate shared options
     if (!isValidOutputType(outputType)) {
@@ -247,6 +257,10 @@ function validateJobOptions(options) {
     
     if (!isValidPlatform(platform)) {
         errors.push(`Invalid platform: ${platform}. Must be one of: ${PLATFORM_LIST.join(', ')}`);
+    }
+    
+    if (!isValidFormFactor(formFactor)) {
+        errors.push(`Invalid formFactor: ${formFactor}. Must be one of: ${FORM_FACTOR_LIST.join(', ')}`);
     }
     
     // Validate data
@@ -280,6 +294,7 @@ function validateJobOptions(options) {
 module.exports = {
     isValidFormat,
     isValidPlatform,
+    isValidFormFactor,
     isValidResponseType,
     isValidMargin,
     isValidViewport,

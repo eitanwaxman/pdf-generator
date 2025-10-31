@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully integrated Supabase for user authentication and API key management into the PDF Generator API service.
+Successfully integrated Supabase for user authentication and API key management into the Docuskribe API service.
 
 ## What Was Implemented
 
@@ -218,7 +218,7 @@ Users need to:
 
 ## 🎉 Implementation Complete!
 
-The PDF Generator now has a production-ready authentication system with:
+Docuskribe now has a production-ready authentication system with:
 - ✅ User accounts and email verification
 - ✅ Secure API key management
 - ✅ Beautiful dashboard UI

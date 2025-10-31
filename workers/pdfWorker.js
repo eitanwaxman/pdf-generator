@@ -30,6 +30,10 @@ const worker = new Worker(
     async (job) => {
         const { url, options = {}, account } = job.data;
         const apiKey = account?.apiKey;
+        const attemptsMade = job.attemptsMade || 0;
+        
+        console.log(`[Worker] Processing job ${job.id}, attempt ${attemptsMade + 1}, URL: ${url}`);
+        
         if (apiKey) {
             await incrementActiveCounter(apiKey);
         }
@@ -39,6 +43,8 @@ const worker = new Worker(
             if (!isValidUrl(url)) {
                 throw new Error('Invalid URL provided');
             }
+
+            console.log(`[Worker] Starting generation for job ${job.id} (attempt ${attemptsMade + 1})`);
 
             // Enforce hard 60s timeout for generation
             const HARD_TIMEOUT_MS = 60 * 1000;
@@ -57,6 +63,8 @@ const worker = new Worker(
             });
 
             const { buffer, fileUrl, outputType } = await Promise.race([generationPromise, timeoutPromise]);
+            
+            console.log(`[Worker] Generation completed for job ${job.id} (attempt ${attemptsMade + 1}): ${outputType}, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
 
             // Calculate size for response
             const MB = 1024 * 1024; // 1MB in bytes
@@ -86,6 +94,9 @@ const worker = new Worker(
             }
 
             return result;
+        } catch (error) {
+            console.error(`[Worker] Error processing job ${job.id} (attempt ${attemptsMade + 1}):`, error.message);
+            throw error;
         } finally {
             if (apiKey) {
                 await decrementActiveCounter(apiKey);
@@ -98,13 +109,30 @@ const worker = new Worker(
     }
 );
 
-worker.on('completed', (job) => {
+worker.on('active', (job) => {
+    const attemptsMade = job.attemptsMade || 0;
+    const maxAttempts = job.opts?.attempts || 3;
     const outputType = job.data?.options?.outputType || 'pdf';
-    console.log(`Job ${job.id} completed successfully (${outputType})`);
+    console.log(`[Worker] Job ${job.id} active: attempt ${attemptsMade + 1}/${maxAttempts} (${outputType})`);
+});
+
+worker.on('completed', (job) => {
+    const attemptsMade = job.attemptsMade || 0;
+    const maxAttempts = job.opts?.attempts || 3;
+    const outputType = job.data?.options?.outputType || 'pdf';
+    // On completion, BullMQ increments attemptsMade for the final run as well.
+    // So attemptsMade === 1 means first attempt success.
+    const finishedAttempt = Math.max(1, attemptsMade);
+    console.log(`[Worker] Job ${job.id} completed successfully: attempt ${finishedAttempt}/${maxAttempts} (${outputType})`);
 });
 
 worker.on('failed', (job, err) => {
-    console.error(`Job ${job.id} failed:`, err.message);
+    const attemptsMade = job.attemptsMade || 0;
+    const maxAttempts = job.opts?.attempts || 3;
+    console.error(`[Worker] Job ${job.id} failed on attempt ${attemptsMade}/${maxAttempts}: ${err.message}`);
+    if (err.stack) {
+        console.error(`[Worker] Stack trace:`, err.stack);
+    }
 });
 
 worker.on('error', (err) => {

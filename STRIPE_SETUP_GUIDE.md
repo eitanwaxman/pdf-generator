@@ -147,7 +147,7 @@ For local development, use Stripe CLI:
 2. Click **+ Add endpoint**
 3. Fill in the details:
    - **Endpoint URL**: `https://your-domain.com/webhooks/stripe`
-   - **Description**: PDF Generator subscription webhooks
+   - **Description**: Docuskribe subscription webhooks
    - **Events to send**: Select the following events:
      - `checkout.session.completed`
      - `customer.subscription.updated`

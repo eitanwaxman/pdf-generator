@@ -51,7 +51,6 @@ async function createCheckoutSession(userId, tier, email, customerId = null) {
                 await stripe.customers.retrieve(stripeCustomerId);
             } catch (error) {
                 // Customer doesn't exist (deleted or from different mode)
-                console.log(`Stored customer ${stripeCustomerId} not found, creating new one`);
                 stripeCustomerId = null;
             }
         }
@@ -146,13 +145,7 @@ async function updateSubscriptionPlan(subscriptionId, newTier) {
             throw new Error('Could not find subscription items');
         }
         
-        console.log('Updating subscription:', {
-            subscriptionId,
-            currentTier: fixedItem.price.id,
-            newTier,
-            newFixedPriceId,
-            newMeteredPriceId
-        });
+        
         
         // Update subscription with proration
         // Use 'always_invoice' to immediately charge/credit the prorated amount
@@ -177,12 +170,7 @@ async function updateSubscriptionPlan(subscriptionId, newTier) {
             expand: ['items.data.price']
         });
         
-        console.log('Subscription updated successfully:', {
-            id: refreshedSubscription.id,
-            status: refreshedSubscription.status,
-            current_period_start: refreshedSubscription.current_period_start,
-            current_period_end: refreshedSubscription.current_period_end
-        });
+        
         
         return refreshedSubscription;
     } catch (error) {

@@ -1,4 +1,4 @@
-# PDF Generator API Service - Implementation Summary
+# Docuskribe API Service - Implementation Summary
 
 ## Overview
 Successfully transformed the PDF generator into a production-ready API service with comprehensive features for robust, scalable PDF generation.

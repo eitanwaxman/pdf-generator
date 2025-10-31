@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Stripe payment integration has been successfully implemented to handle subscription billing and usage-based overage charges for the PDF Generator API. This document summarizes the implementation, architecture, and key features.
+The Stripe payment integration has been successfully implemented to handle subscription billing and usage-based overage charges for the Docuskribe API. This document summarizes the implementation, architecture, and key features.
 
 ## Stripe Product Architecture (Licensed and Metered Billing)
 

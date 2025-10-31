@@ -63,7 +63,7 @@ async function reconcileSubscription(userId, profile, liveSub) {
             updates.credits_used = 0;
         }
 
-        console.log(`[reconcile] Reconciling DB for user ${userId} with:`, updates);
+        
         
         const { data: updatedProfile, error } = await supabase
             .from('user_profiles')
@@ -94,19 +94,10 @@ router.use(verifySupabaseToken);
  */
 router.get('/profile', async (req, res) => {
     try {
-        console.log('[profile:get] user:', req.user?.id);
+        
         // Ensure user is in current billing period (lazy evaluation)
         const profile = await ensureCurrentBillingPeriod(req.user.id);
-        console.log('[profile:get] profile after ensureCurrentBillingPeriod:', {
-            id: req.user.id,
-            tier: profile?.tier,
-            monthly_credits: profile?.monthly_credits,
-            credits_used: profile?.credits_used,
-            subscription_status: profile?.subscription_status,
-            stripe_subscription_id: profile?.stripe_subscription_id,
-            stripe_customer_id: profile?.stripe_customer_id,
-            subscription_period_end: profile?.subscription_period_end
-        });
+        
         
         // Calculate credits remaining
         const creditsRemaining = Math.max(0, profile.monthly_credits - profile.credits_used);
@@ -229,10 +220,8 @@ router.patch('/settings', async (req, res) => {
 router.post('/checkout', async (req, res) => {
     try {
         const { tier } = req.body;
-        console.log('[checkout] user:', req.user?.id, 'requested tier:', tier);
         
         if (!['starter', 'pro'].includes(tier)) {
-            console.warn('[checkout] invalid tier:', tier);
             return res.status(400).json({ error: 'Invalid tier' });
         }
         
@@ -247,7 +236,7 @@ router.post('/checkout', async (req, res) => {
             console.error('[checkout] error fetching profile:', profileError);
             return res.status(500).json({ error: 'Failed to fetch user profile' });
         }
-        console.log('[checkout] profile:', profile);
+        
         
         // Check if user has an active subscription
         const hasActiveSubscription = profile.stripe_subscription_id && 
@@ -255,7 +244,6 @@ router.post('/checkout', async (req, res) => {
             profile.tier !== 'free';
         
         if (hasActiveSubscription) {
-            console.log('[checkout] found active subscription, checking if upgrade/downgrade');
             
             // If requesting the same tier, return error
             if (profile.tier === tier) {
@@ -267,17 +255,11 @@ router.post('/checkout', async (req, res) => {
             }
             
             // Handle plan change (upgrade or downgrade)
-            console.log('[checkout] initiating plan change:', {
-                from: profile.tier,
-                to: tier,
-                subscriptionId: profile.stripe_subscription_id,
-                cancelAtPeriodEnd: profile.cancel_at_period_end
-            });
+            
             
             try {
                 // If subscription is marked for cancellation, we need to remove that first
                 if (profile.cancel_at_period_end) {
-                    console.log('[checkout] subscription is marked for cancellation, removing cancellation first');
                     await stripe.subscriptions.update(profile.stripe_subscription_id, {
                         cancel_at_period_end: false
                     });
@@ -289,12 +271,7 @@ router.post('/checkout', async (req, res) => {
                     tier
                 );
                 
-                console.log('[checkout] subscription updated successfully:', {
-                    id: updatedSubscription.id,
-                    status: updatedSubscription.status,
-                    current_period_start: updatedSubscription.current_period_start,
-                    current_period_end: updatedSubscription.current_period_end
-                });
+                
                 
                 // Determine new credits based on tier
                 const newMonthlyCredits = tier === 'starter' ? 1000 : 5000;
@@ -322,10 +299,7 @@ router.post('/checkout', async (req, res) => {
                     }
                 }
                 
-                console.log('[checkout] converted dates:', {
-                    periodStart,
-                    periodEnd
-                });
+                
                 
                 // Prepare update data
                 const updateData = {
@@ -352,7 +326,7 @@ router.post('/checkout', async (req, res) => {
                     throw updateError;
                 }
                 
-                console.log('[checkout] plan change complete, DB updated');
+                
                 
                 // Return success response (no redirect needed)
                 return res.json({
@@ -376,20 +350,16 @@ router.post('/checkout', async (req, res) => {
         // Stripe-level guard: check live subscriptions for this customer
         if (profile.stripe_customer_id) {
             try {
-                console.log('[checkout] querying Stripe subscriptions for customer:', profile.stripe_customer_id);
                 const subs = await stripe.subscriptions.list({
                     customer: profile.stripe_customer_id,
                     status: 'all',
                     limit: 10,
                 });
-                console.log('[checkout] Stripe subscriptions found:', subs.data.map(s => ({ id: s.id, status: s.status, cancel_at_period_end: s.cancel_at_period_end })));
                 const activeSub = subs.data.find(s => ['active', 'trialing', 'past_due', 'unpaid'].includes(s.status) && !s.cancel_at_period_end);
                 if (activeSub) {
-                    console.warn('[checkout] blocked by Stripe guard: found active subscription', { id: activeSub.id, status: activeSub.status });
                     
                     // Sync DB if missing or inconsistent
                     try {
-                        console.log('[checkout] Verifying/syncing subscription from checkout guard');
                         const liveSub = await stripe.subscriptions.retrieve(activeSub.id, { expand: ['items.data.price'] });
                         await reconcileSubscription(req.user.id, profile, liveSub);
                     } catch (syncError) {
@@ -406,21 +376,17 @@ router.post('/checkout', async (req, res) => {
                     });
                 }
             } catch (stripeErr) {
-                console.warn('[checkout] Stripe subscription check failed:', stripeErr?.message || stripeErr);
             }
         } else {
-            console.log('[checkout] no stripe_customer_id on profile; checkout will create one');
         }
         
         // Create Stripe Checkout session
-        console.log('[checkout] creating checkout session...');
         const session = await createCheckoutSession(
             req.user.id,
             tier,
             req.user.email,
             profile.stripe_customer_id
         );
-        console.log('[checkout] session created:', { id: session.id, url: session.url });
         
         res.json({
             url: session.url,
@@ -449,38 +415,36 @@ router.get('/subscription', async (req, res) => {
         if (profileError) {
             return res.status(404).json({ error: 'Profile not found' });
         }
-        console.log('[subscription:get] profile before sync:', profile);
+        
 
         let subscriptionId = profile.stripe_subscription_id;
         // Attempt sync if missing sub id
         if (!subscriptionId && profile.stripe_customer_id) {
             try {
-                console.log('[subscription:get] syncing from Stripe for customer:', profile.stripe_customer_id);
                 const subs = await stripe.subscriptions.list({ customer: profile.stripe_customer_id, status: 'all', limit: 10 });
-                console.log('[subscription:get] Stripe subs:', subs.data.map(s => ({ id: s.id, status: s.status })));
+                
                 const activeSub = subs.data.find(s => ['active', 'trialing', 'past_due', 'unpaid'].includes(s.status) && !s.cancel_at_period_end);
                 if (activeSub) {
                     subscriptionId = activeSub.id;
                 }
             } catch (e) {
-                console.warn('[subscription:get] Stripe list failed:', e?.message || e);
+                
             }
         }
 
         if (!subscriptionId) {
-            console.log('[subscription:get] no active subscription');
+            
             return res.json({ subscription: null, tier: profile.tier });
         }
 
         // Fetch live subscription with price expansion
         const liveSub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data.price'] });
-        console.log('[subscription:get] RAW STRIPE SUBSCRIPTION:', JSON.stringify(liveSub, null, 2));
-        console.log('[subscription:get] live sub:', { id: liveSub.id, status: liveSub.status });
+        
 
         // Reconcile DB with Stripe truth
         const reconciledProfile = await reconcileSubscription(req.user.id, profile, liveSub);
 
-        console.log('[subscription:get] returning live subscription:', { id: liveSub.id, status: liveSub.status, mappedTier: reconciledProfile.tier });
+        
         res.json({
             subscription: {
                 id: liveSub.id,

@@ -75,7 +75,7 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(port, () => {
-    console.log(`PDF Generator API Server running on port ${port}`);
+    console.log(`Docuskribe API Server running on port ${port}`);
     console.log('API Endpoints:');
     console.log(`  POST /api/v1/jobs - Create a PDF generation job`);
     console.log(`  GET /api/v1/jobs/:jobId - Get job status and result`);

@@ -1,4 +1,4 @@
-# PDF Generator API Service
+# Docuskribe API Service
 
 A production-ready API service for converting websites to PDF or screenshots with user authentication, job queuing, rate limiting, and account tiers.
 

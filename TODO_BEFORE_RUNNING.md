@@ -1,13 +1,13 @@
 # ✅ Before You Run the Application
 
-Complete these steps to get your PDF Generator running with Supabase authentication:
+Complete these steps to get Docuskribe running with Supabase authentication:
 
 ## 1. Create Supabase Project (5 minutes)
 
 1. Go to https://supabase.com and sign up/login
 2. Click "New Project"
 3. Fill in project details:
-   - Name: `pdf-generator`
+   - Name: `docuskribe`
    - Database Password: (generate and save it!)
    - Region: (choose closest to you)
 4. Wait ~2 minutes for project to be ready
@@ -78,7 +78,7 @@ node app.js
 
 You should see:
 ```
-PDF Generator API Server running on port 3000
+Docuskribe API Server running on port 3000
 API Endpoints:
   POST /api/v1/jobs - Create a PDF generation job
   GET /api/v1/jobs/:jobId - Get job status and result

@@ -590,7 +590,7 @@ export default function DocsView({ apiKey, isLoggedIn }) {
       {/* Header */}
       <Card className="bg-gradient-to-r from-primary to-purple-600 text-primary-foreground">
         <CardContent className="py-12 text-center">
-          <h1 className="text-4xl font-bold mb-2">PDF Generator API</h1>
+          <h1 className="text-4xl font-bold mb-2">Docuskribe API</h1>
           <p className="text-lg text-primary-foreground/90">
             Convert any website to PDF or screenshot with a simple API call
           </p>
@@ -636,6 +636,7 @@ export default function DocsView({ apiKey, isLoggedIn }) {
           { name: 'options.outputType', type: 'select', options: ['pdf', 'screenshot'], default: 'pdf', description: 'Output type (string: "pdf" | "screenshot")' },
           { name: 'options.responseType', type: 'select', options: ['url', 'buffer'], default: 'url', description: 'Response format (string: "url" | "buffer")' },
           { name: 'options.platform', type: 'select', options: ['', 'wix'], default: '', description: 'Platform optimization (string: "" | "wix", optional)' },
+          { name: 'options.formFactor', type: 'select', options: ['desktop', 'mobile'], default: 'desktop', description: 'Device form factor (string: "desktop" | "mobile", default: "desktop")' },
           // PDF Options
           { name: 'options.pdfOptions.format', type: 'select', options: ['Letter', 'Legal', 'Tabloid', 'Ledger', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], default: 'A4', description: 'PDF page format (string: "Letter" | "Legal" | "Tabloid" | "Ledger" | "A0" | "A1" | "A2" | "A3" | "A4" | "A5" | "A6")' },
           { name: 'options.pdfOptions.margin.top', type: 'string', default: '50px', description: 'Top margin (string, CSS length: "50px" | "2cm" | "1in", optional)' },

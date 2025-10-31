@@ -68,12 +68,23 @@ function addWatermark(watermarkConfig) {
  */
 async function getBrowser() {
     if (!browser) {
-        browser = await puppeteer.launch({ headless: 'new' });
-        process.on('exit', async () => {
-            if (browser) {
-                await browser.close();
-            }
-        });
+        console.log('[Puppeteer] Launching browser (cold start)...');
+        const startTime = Date.now();
+        try {
+            browser = await puppeteer.launch({ headless: 'new' });
+            const launchTime = Date.now() - startTime;
+            console.log(`[Puppeteer] Browser launched successfully in ${launchTime}ms`);
+            process.on('exit', async () => {
+                if (browser) {
+                    await browser.close();
+                }
+            });
+        } catch (error) {
+            console.error('[Puppeteer] Failed to launch browser:', error.message);
+            throw error;
+        }
+    } else {
+        console.log('[Puppeteer] Reusing existing browser instance');
     }
     return browser;
 }
@@ -196,25 +207,83 @@ function storeTemporaryFile(buffer, extension) {
  * @param {object} params
  * @returns {Promise<Page>} Configured Puppeteer page ready for output generation
  */
-async function preparePageForOutput({ url, account, platform, viewport = null, maxScrollHeight = null }) {
+async function preparePageForOutput({ url, account, platform, viewport = null, formFactor = 'desktop', maxScrollHeight = null }) {
     const browser = await getBrowser();
+    
+    console.log('[Puppeteer] Creating new page...');
+    const pageStartTime = Date.now();
     const page = await browser.newPage();
+    const pageTime = Date.now() - pageStartTime;
+    console.log(`[Puppeteer] New page created in ${pageTime}ms`);
 
     try {
-        // Set viewport if specified (for both PDFs and screenshots)
-        // Default is 800x600 if not specified
+        // Handle viewport and formFactor
+        let finalViewport;
+        
         if (viewport) {
-            await page.setViewport(viewport);
+            // If viewport is explicitly provided, merge formFactor settings with it
+            finalViewport = { ...viewport };
+            
+            if (formFactor === 'mobile') {
+                // Merge mobile-specific properties, but allow explicit viewport to override dimensions
+                finalViewport = {
+                    width: viewport.width || 390,
+                    height: viewport.height || 844,
+                    deviceScaleFactor: viewport.deviceScaleFactor ?? 2,
+                    isMobile: viewport.isMobile ?? true,
+                    hasTouch: viewport.hasTouch ?? true,
+                    isLandscape: viewport.isLandscape ?? false
+                };
+            }
+        } else if (formFactor === 'mobile') {
+            // Default mobile viewport settings
+            finalViewport = {
+                width: 390,
+                height: 844,
+                deviceScaleFactor: 2,
+                isMobile: true,
+                hasTouch: true,
+                isLandscape: false
+            };
+        } else {
+            // Default desktop viewport (800x600)
+            finalViewport = {
+                width: 800,
+                height: 600
+            };
+        }
+        
+        await page.setViewport(finalViewport);
+        
+        // Set mobile user agent if formFactor is mobile (unless viewport explicitly overrides isMobile)
+        if (formFactor === 'mobile' && finalViewport.isMobile !== false) {
+            await page.setUserAgent(
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1'
+            );
         }
 
         // Navigate to URL
-        await page.goto(url, { 
-            waitUntil: 'networkidle0', 
-            timeout: TIME.PAGE_NAVIGATION_TIMEOUT 
-        });
+        console.log(`[Puppeteer] Navigating to ${url}...`);
+        const gotoStartTime = Date.now();
+        try {
+            await page.goto(url, { 
+                waitUntil: 'networkidle0', 
+                timeout: TIME.PAGE_NAVIGATION_TIMEOUT 
+            });
+            const gotoTime = Date.now() - gotoStartTime;
+            console.log(`[Puppeteer] Navigation completed in ${gotoTime}ms`);
+        } catch (error) {
+            const gotoTime = Date.now() - gotoStartTime;
+            console.error(`[Puppeteer] Navigation failed after ${gotoTime}ms:`, error.message);
+            throw error;
+        }
 
         // Scroll to load lazy content
+        console.log('[Puppeteer] Starting progressive scroll...');
+        const scrollStartTime = Date.now();
         await scrollPageProgressively(page, 200, maxScrollHeight);
+        const scrollTime = Date.now() - scrollStartTime;
+        console.log(`[Puppeteer] Progressive scroll completed in ${scrollTime}ms`);
 
         // Emulate media type
         await page.emulateMediaType('screen');
@@ -250,7 +319,7 @@ async function preparePageForOutput({ url, account, platform, viewport = null, m
  * @returns {object} - { buffer, fileUrl, outputType }
  */
 async function generatePdf({ url, pdfOptions = {}, account }) {
-    const { margin, format, platform, viewport } = pdfOptions;
+    const { margin, format, platform, viewport, formFactor = 'desktop' } = pdfOptions;
     const pdfFormat = format || PDF_FORMATS.A4;
     const actualMargin = margin || DEFAULT_MARGIN;
     
@@ -268,15 +337,20 @@ async function generatePdf({ url, pdfOptions = {}, account }) {
             account,
             platform,
             viewport: viewport || null, // Pass viewport if provided, default is 800x600
+            formFactor,
             maxScrollHeight: maxHeight
         });
 
         // Generate PDF (the only PDF-specific code!)
+        console.log('[PDF Service] Generating PDF...');
+        const pdfStartTime = Date.now();
         const pdfBuffer = await page.pdf({
             margin: actualMargin,
             printBackground: true,
             format: pdfFormat,
         });
+        const pdfTime = Date.now() - pdfStartTime;
+        console.log(`[PDF Service] PDF generated in ${pdfTime}ms, size: ${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB`);
 
         const fileUrl = storeTemporaryFile(pdfBuffer, 'pdf');
 
@@ -319,7 +393,8 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
         quality = DEFAULT_SCREENSHOT_OPTIONS.quality,
         fullPage = DEFAULT_SCREENSHOT_OPTIONS.fullPage,
         viewport = DEFAULT_SCREENSHOT_OPTIONS.viewport,
-        platform
+        platform,
+        formFactor = 'desktop'
     } = screenshotOptions;
 
     let page;
@@ -330,10 +405,12 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
             account,
             platform,
             viewport,
+            formFactor,
             maxScrollHeight: null // Screenshots capture full page if fullPage is true
         });
 
         // Generate screenshot (the only screenshot-specific code!)
+        console.log('[Screenshot Service] Generating screenshot...');
         const screenshotOpts = {
             type,
             fullPage
@@ -344,7 +421,10 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
             screenshotOpts.quality = quality;
         }
 
+        const screenshotStartTime = Date.now();
         const screenshotBuffer = await page.screenshot(screenshotOpts);
+        const screenshotTime = Date.now() - screenshotStartTime;
+        console.log(`[Screenshot Service] Screenshot generated in ${screenshotTime}ms, size: ${(screenshotBuffer.length / 1024 / 1024).toFixed(2)}MB`);
 
         const fileUrl = storeTemporaryFile(screenshotBuffer, type);
 
@@ -384,6 +464,7 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
 async function generateOutput({ url, options = {}, account }) {
     const outputType = options.outputType || 'pdf'; // Default to PDF for backward compatibility
     const platform = options.platform; // Extract shared platform option
+    const formFactor = options.formFactor || 'desktop'; // Extract formFactor option, default to desktop
 
     // Append options.data as query params to the URL if provided
     let finalUrl = url;
@@ -407,7 +488,8 @@ async function generateOutput({ url, options = {}, account }) {
             url: finalUrl, 
             screenshotOptions: { 
                 ...options.screenshotOptions,
-                platform  // Pass platform explicitly to nested options
+                platform,  // Pass platform explicitly to nested options
+                formFactor  // Pass formFactor explicitly to nested options
             }, 
             account 
         });
@@ -416,7 +498,8 @@ async function generateOutput({ url, options = {}, account }) {
             url: finalUrl, 
             pdfOptions: { 
                 ...(options.pdfOptions || options),  // Support both structures for backward compatibility
-                platform  // Pass platform explicitly to nested options
+                platform,  // Pass platform explicitly to nested options
+                formFactor  // Pass formFactor explicitly to nested options
             },
             account 
         });

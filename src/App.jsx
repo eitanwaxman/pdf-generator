@@ -9,11 +9,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
 import { Button } from './components/ui/button'
 import { Alert, AlertDescription } from './components/ui/alert'
 import { CheckCircle, XCircle } from 'lucide-react'
+import LandingView from './components/LandingView'
 
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState('landing')
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [apiKey, setApiKey] = useState(null)
@@ -48,6 +49,7 @@ function App() {
       setSession(session)
       setLoading(false)
       if (session) {
+        setActiveTab('dashboard')
         loadUserData(session)
       }
     })
@@ -58,6 +60,7 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) {
+        setActiveTab('dashboard')
         loadUserData(session)
       }
     })
@@ -133,21 +136,31 @@ function App() {
     )
   }
 
-  // Not logged in - show auth or public docs
+  // Not logged in - show landing by default, with options to auth/docs
   if (!session) {
+    if (activeTab === 'landing') {
+      return (
+        <LandingView 
+          onGetStarted={() => setActiveTab('auth')}
+          onViewDocs={() => setActiveTab('docs')}
+          onViewPlans={() => setActiveTab('auth')}
+        />
+      )
+    }
     return (
       <div className="min-h-screen bg-background">
         <div className="container max-w-4xl mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-6">
+            <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to landing</Button>
+          </div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="auth">Sign In</TabsTrigger>
               <TabsTrigger value="docs">API Docs</TabsTrigger>
             </TabsList>
-            
             <TabsContent value="auth">
               <AuthView />
             </TabsContent>
-            
             <TabsContent value="docs">
               <DocsView isLoggedIn={false} />
             </TabsContent>
@@ -164,7 +177,7 @@ function App() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold">PDF Generator API</h1>
+            <h1 className="text-3xl font-bold">Docuskribe API</h1>
             <p className="text-muted-foreground">
               {user?.email} • {profile?.tier ? (
                 <span className="capitalize">{profile.tier} Plan</span>

@@ -24,7 +24,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
     
-    console.log(`Received Stripe webhook: ${event.type}`);
+    
     
     try {
         switch (event.type) {
@@ -49,7 +49,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
                 break;
             
             default:
-                console.log(`Unhandled event type: ${event.type}`);
+                
         }
         
         res.json({ received: true });
@@ -64,13 +64,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
  * Updates user profile with subscription details
  */
 async function handleCheckoutCompleted(session) {
-    console.log('Processing checkout.session.completed');
-    console.log('Session data:', {
-        user_id: session.metadata?.user_id,
-        tier: session.metadata?.tier,
-        customer: session.customer,
-        subscription: session.subscription
-    });
+    
     
     const userId = session.metadata.user_id;
     const tier = session.metadata.tier;
@@ -94,13 +88,13 @@ async function handleCheckoutCompleted(session) {
         existingProfile.stripe_subscription_id !== subscriptionId &&
         (existingProfile.subscription_status === 'active' || existingProfile.subscription_status === 'trialing')) {
         
-        console.log(`⚠️ User ${userId} has existing subscription ${existingProfile.stripe_subscription_id}, canceling it`);
+        
         
         // Cancel the old subscription immediately
         try {
             const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
             await stripe.subscriptions.cancel(existingProfile.stripe_subscription_id);
-            console.log(`✅ Canceled old subscription ${existingProfile.stripe_subscription_id}`);
+            
         } catch (cancelError) {
             console.error('Error canceling old subscription:', cancelError);
             // Continue anyway - new subscription should take precedence
@@ -113,13 +107,7 @@ async function handleCheckoutCompleted(session) {
         expand: ['items.data.price']
     });
     
-    console.log('Retrieved subscription:', {
-        id: subscription.id,
-        status: subscription.status,
-        current_period_start: subscription.current_period_start,
-        current_period_end: subscription.current_period_end,
-        items_count: subscription.items.data.length
-    });
+    
     
     // Find the metered billing item (overage)
     const meteredItem = subscription.items.data.find(
@@ -167,7 +155,7 @@ async function handleCheckoutCompleted(session) {
         cancel_at_period_end: false
     };
     
-    console.log('Updating user profile with:', updateData);
+    
     
     // Update user profile
     const { data, error } = await supabase
@@ -186,8 +174,7 @@ async function handleCheckoutCompleted(session) {
         throw new Error('User profile not found or not updated');
     }
     
-    console.log(`✅ Subscription created successfully for user ${userId}, tier: ${tier}`);
-    console.log('Updated profile:', data[0]);
+    
 }
 
 /**
@@ -195,7 +182,7 @@ async function handleCheckoutCompleted(session) {
  * Handles plan changes, cancellations, renewals
  */
 async function handleSubscriptionUpdated(subscription) {
-    console.log('Processing customer.subscription.updated');
+    
     
     const customerId = subscription.customer;
     
@@ -229,7 +216,6 @@ async function handleSubscriptionUpdated(subscription) {
     
     // Log plan changes for debugging
     if (newTier !== profile.tier) {
-        console.log(`✨ Plan change detected: ${profile.tier} → ${newTier} for user ${profile.id}`);
     }
     
     // Find metered item
@@ -257,7 +243,7 @@ async function handleSubscriptionUpdated(subscription) {
         throw error;
     }
     
-    console.log(`Subscription updated for user ${profile.id}`);
+    
 }
 
 /**
@@ -265,7 +251,7 @@ async function handleSubscriptionUpdated(subscription) {
  * Downgrade user to free tier
  */
 async function handleSubscriptionDeleted(subscription) {
-    console.log('Processing customer.subscription.deleted');
+    
     
     const customerId = subscription.customer;
     
@@ -301,7 +287,7 @@ async function handleSubscriptionDeleted(subscription) {
         throw error;
     }
     
-    console.log(`User ${profile.id} downgraded to free tier after subscription deletion`);
+    
 }
 
 /**
@@ -309,7 +295,7 @@ async function handleSubscriptionDeleted(subscription) {
  * Reset credits for new billing period
  */
 async function handleInvoicePaymentSucceeded(invoice) {
-    console.log('Processing invoice.payment_succeeded');
+    
     
     const customerId = invoice.customer;
     const subscriptionId = invoice.subscription;
@@ -363,7 +349,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
         throw error;
     }
     
-    console.log(`Credits reset for user ${profile.id} after successful payment`);
+    
 }
 
 /**
@@ -371,7 +357,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
  * Update subscription status
  */
 async function handleInvoicePaymentFailed(invoice) {
-    console.log('Processing invoice.payment_failed');
+    
     
     const customerId = invoice.customer;
     const subscriptionId = invoice.subscription;
@@ -406,7 +392,7 @@ async function handleInvoicePaymentFailed(invoice) {
         throw error;
     }
     
-    console.log(`Subscription marked as past_due for user ${profile.id}`);
+    
     // TODO: Send notification email to user about failed payment
 }
 

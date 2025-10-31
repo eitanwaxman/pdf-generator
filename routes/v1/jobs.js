@@ -84,7 +84,9 @@ router.post('/', async (req, res) => {
         }
         
         // Create the job
-        const jobId = await addPdfJob(url, options, req.account);
+        // Currently each job costs 1 credit (can be made configurable in the future)
+        const jobCredits = 1;
+        const jobId = await addPdfJob(url, options, req.account, jobCredits);
         const outputType = options?.outputType || 'pdf';
         
         // Increment credits_used counter
@@ -102,7 +104,6 @@ router.post('/', async (req, res) => {
         if (creditCheck.isOverage && profile.stripe_metered_item_id) {
             try {
                 await reportUsage(profile.stripe_metered_item_id, 1);
-                console.log(`Reported overage usage to Stripe for user ${req.account.userId}`);
             } catch (stripeError) {
                 console.error('Error reporting usage to Stripe:', stripeError);
                 // Don't fail the job, overage will be tracked in credits_used
@@ -146,6 +147,83 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * Calculate estimated time to completion based on queue position
+ * @param {Object} job - BullMQ job object
+ * @returns {Object|null} - Estimated time info or null if not waiting
+ */
+async function calculateEstimatedTime(job) {
+    try {
+        const state = await job.getState();
+        
+        // Only calculate for waiting jobs
+        if (state !== 'waiting') {
+            return null;
+        }
+
+        // Get all waiting jobs ordered by priority and creation time
+        const waitingJobs = await pdfQueue.getWaiting();
+        
+        // Find this job's position in the queue
+        let position = 0;
+        for (let i = 0; i < waitingJobs.length; i++) {
+            if (waitingJobs[i].id === job.id) {
+                position = i;
+                break;
+            }
+        }
+
+        // Get active jobs count to understand current processing capacity
+        const activeJobs = await pdfQueue.getActive();
+        const activeCount = activeJobs.length;
+        
+        // Average processing time per job (in seconds) - this is an estimate
+        // Based on 60s timeout, most jobs complete in 10-30 seconds, average ~20s
+        const AVG_PROCESSING_TIME_SEC = 20;
+        
+        // Worker concurrency from constants
+        const { WORKER_CONCURRENCY } = require('../config/constants');
+        
+        // Calculate available worker slots
+        const availableSlots = Math.max(0, WORKER_CONCURRENCY - activeCount);
+        
+        // Estimate: if there are available slots, job might start soon
+        // Otherwise, need to wait for jobs ahead to complete
+        let estimatedSeconds = 0;
+        
+        if (position === 0 && availableSlots > 0) {
+            // First in queue and workers available - start soon
+            estimatedSeconds = 5; // Small buffer for job pickup
+        } else if (availableSlots > 0) {
+            // Not first, but workers available
+            // Estimate based on jobs ahead and available capacity
+            const jobsAheadPerSlot = Math.ceil(position / availableSlots);
+            estimatedSeconds = jobsAheadPerSlot * AVG_PROCESSING_TIME_SEC;
+        } else {
+            // No available slots - need to wait for active jobs to finish
+            // Estimate remaining time for active jobs + time for jobs ahead
+            const activeJobRemainingTime = AVG_PROCESSING_TIME_SEC * 0.5; // Assume active jobs are halfway
+            const jobsAheadTime = Math.ceil(position / WORKER_CONCURRENCY) * AVG_PROCESSING_TIME_SEC;
+            estimatedSeconds = activeJobRemainingTime + jobsAheadTime;
+        }
+
+        // Add processing time for this job itself
+        estimatedSeconds += AVG_PROCESSING_TIME_SEC;
+
+        return {
+            estimatedSeconds: Math.round(estimatedSeconds),
+            estimatedMinutes: Math.round(estimatedSeconds / 60 * 10) / 10, // Round to 1 decimal
+            queuePosition: position + 1, // 1-indexed for user display
+            jobsAhead: position,
+            activeJobs: activeCount,
+            workerConcurrency: WORKER_CONCURRENCY
+        };
+    } catch (error) {
+        console.error('Error calculating estimated time:', error);
+        return null;
+    }
+}
+
+/**
  * GET /api/v1/jobs/:jobId
  * Get job status and result
  */
@@ -176,6 +254,12 @@ router.get('/:jobId', async (req, res) => {
             finishedOn: job.finishedOn
         };
 
+        // Get credits information from job data
+        const credits = job.data?.credits ?? 1; // Default to 1 if not set (for backwards compatibility)
+
+        // Calculate estimated time if job is waiting
+        const estimatedTime = await calculateEstimatedTime(job);
+
         // Prepare retry information
         const retryInfo = {
             attemptsMade,
@@ -191,6 +275,7 @@ router.get('/:jobId', async (req, res) => {
                 status: 'failed', 
                 error: reason,
                 attemptsMade,
+                credits,
                 retryInfo: {
                     ...retryInfo,
                     exhausted: true,
@@ -202,13 +287,21 @@ router.get('/:jobId', async (req, res) => {
 
         // Job is still pending (waiting to be processed initially)
         if (state === 'waiting') {
-            return res.json({ 
+            const response = { 
                 status: 'pending', 
                 progress, 
                 attemptsMade, 
+                credits,
                 retryInfo,
                 ...timestamps 
-            });
+            };
+            
+            // Add estimated time if available
+            if (estimatedTime) {
+                response.estimatedTime = estimatedTime;
+            }
+            
+            return res.json(response);
         }
 
         // Job is delayed (waiting for retry backoff) - this means it's being retried after a failure
@@ -217,6 +310,7 @@ router.get('/:jobId', async (req, res) => {
                 status: 'processing', 
                 progress, 
                 attemptsMade,
+                credits,
                 retryInfo: {
                     ...retryInfo,
                     isRetrying: attemptsMade > 0,
@@ -235,6 +329,7 @@ router.get('/:jobId', async (req, res) => {
                 status: 'processing', 
                 progress, 
                 attemptsMade,
+                credits,
                 retryInfo: {
                     ...retryInfo,
                     isRetrying: attemptsMade > 0,
@@ -261,18 +356,24 @@ router.get('/:jobId', async (req, res) => {
                 sizeMB,
                 progress,
                 attemptsMade,
+                credits,
                 retryInfo: {
                     ...retryInfo,
                     succeeded: true,
-                    message: attemptsMade > 0 
-                        ? `Succeeded on attempt ${attemptsMade + 1} of ${QUEUE.MAX_ATTEMPTS}`
-                        : 'Succeeded on first attempt'
+                    // BullMQ's attemptsMade reflects number of attempts that have been made.
+                    // On completion without retries, attemptsMade === 1. Treat 1 as first attempt.
+                    message: attemptsMade <= 1
+                        ? 'Succeeded on first attempt'
+                        : `Succeeded on attempt ${attemptsMade} of ${QUEUE.MAX_ATTEMPTS}`
                 },
                 ...timestamps
             });
         }
 
-        return res.json({ status: 'unknown' });
+        return res.json({ 
+            status: 'unknown',
+            credits
+        });
 
     } catch (error) {
         console.error('Error getting job:', { message: error.message, stack: error.stack, jobId });
