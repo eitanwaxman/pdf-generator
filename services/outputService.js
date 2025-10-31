@@ -254,10 +254,9 @@ async function generatePdf({ url, pdfOptions = {}, account }) {
     const pdfFormat = format || PDF_FORMATS.A4;
     const actualMargin = margin || DEFAULT_MARGIN;
     
-    // Calculate page limit for free tier
-    const pageLimit = account && account.tier === 'paid' 
-        ? PAGE_LIMITS.PAID_TIER 
-        : PAGE_LIMITS.FREE_TIER;
+    // Calculate page limit per tier
+    const tier = account?.tier || 'free';
+    const pageLimit = PAGE_LIMITS[tier] ?? PAGE_LIMITS.free;
     const pageHeight = calculateUsablePageHeight(pdfFormat, actualMargin);
     const maxHeight = pageLimit * pageHeight;
 

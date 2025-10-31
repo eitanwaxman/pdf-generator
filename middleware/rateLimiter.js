@@ -19,14 +19,14 @@ let initFailed = false;
     }
 })();
 
-// Custom rate limiter using Redis directly
-const checkRateLimit = async (apiKey) => {
+// Custom daily rate limiter using Redis directly
+const checkDailyLimit = async (apiKey) => {
     if (!redisConnection || initFailed) {
         return true; // Allow request if Redis unavailable
     }
 
     try {
-        const key = `rate_limit:${apiKey}`;
+        const key = `rate_limit:daily:${apiKey}`;
         const windowMs = RATE_LIMIT.WINDOW_MS;
         const maxRequests = RATE_LIMIT.MAX_REQUESTS_FREE;
         
@@ -53,12 +53,38 @@ const checkRateLimit = async (apiKey) => {
     }
 };
 
+// Per-minute throttle using Redis INCR with TTL window
+const checkPerMinuteLimit = async (apiKey, tier) => {
+    if (!redisConnection || initFailed) {
+        return true; // Allow when Redis unavailable
+    }
+
+    try {
+        const windowMs = RATE_LIMIT.PER_MINUTE.WINDOW_MS;
+        const maxRequests = RATE_LIMIT.PER_MINUTE[tier] ?? RATE_LIMIT.PER_MINUTE.free;
+
+        const key = `rate_limit:minute:${apiKey}`;
+
+        // Use INCR and set TTL only when key is first created
+        const current = await redisConnection.incr(key);
+        if (current === 1) {
+            await redisConnection.pExpire(key, windowMs);
+        }
+
+        if (current > maxRequests) {
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Per-minute rate limit check error:', error.message);
+        return true; // Fail-open on errors
+    }
+};
+
 // Rate limiter wrapper that applies based on account tier
 const rateLimiter = async (req, res, next) => {
-    // If paid account, skip rate limiting entirely
-    if (req.account && req.account.tier === 'paid') {
-        return next();
-    }
+    const tier = req.account?.tier || 'free';
     
     // If rate limiter initialization failed, allow all requests
     if (initFailed) {
@@ -70,14 +96,15 @@ const rateLimiter = async (req, res, next) => {
         return next();
     }
     
-    // Check rate limit
-    const allowed = await checkRateLimit(req.account.apiKey);
-    
-    if (!allowed) {
+    // Per-minute limit (applies to both free and paid, with different caps)
+    const minuteAllowed = await checkPerMinuteLimit(req.account.apiKey, tier);
+    if (!minuteAllowed) {
         return res.status(429).json({ 
-            error: 'Rate limit exceeded for free account. Upgrade to paid for unlimited access.' 
+            error: 'Too many requests in a short period. Please slow down.'
         });
     }
+
+    // No daily limit for free tier anymore
     
     return next();
 };

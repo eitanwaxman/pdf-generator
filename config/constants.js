@@ -89,16 +89,18 @@ const TIME = {
     NETWORK_IDLE_TIMEOUT: 3000
 };
 
-// Priority Constants
+// Priority Constants (higher = sooner)
 const PRIORITY = {
-    FREE_TIER: 1,
-    PAID_TIER: 10
+    FREE: 1,
+    STARTER: 5,
+    PRO: 10
 };
 
-// Page Limit Constants
+// Page Limit Constants per tier
 const PAGE_LIMITS = {
-    FREE_TIER: 1,
-    PAID_TIER: 5
+    free: 1,
+    starter: 3,
+    pro: 5
 };
 
 // Queue Constants
@@ -112,8 +114,14 @@ const QUEUE = {
 
 // Rate Limiting Constants
 const RATE_LIMIT = {
-    WINDOW_MS: 24 * 60 * 60 * 1000, // 24 hours
-    MAX_REQUESTS_FREE: 50
+    WINDOW_MS: 24 * 60 * 60 * 1000, // 24 hours (not used as hard cap)
+    // Per-minute throttle (burst control)
+    PER_MINUTE: {
+        WINDOW_MS: 60 * 1000,
+        free: 5,
+        starter: 10,
+        pro: 15
+    }
 };
 
 // Watermark Style Constants
@@ -153,6 +161,20 @@ const PDF_FULL_HEIGHTS = {
 // Concurrency
 const WORKER_CONCURRENCY = 3;
 
+// Per-user concurrency limits (active jobs at the same time)
+const CONCURRENCY = {
+    free: 1,
+    starter: 3,
+    pro: 7
+};
+
+// Monthly credit caps (runtime caps irrespective of DB values)
+const MAX_MONTHLY_CREDITS = {
+    free: 50,
+    starter: 300,
+    pro: 1000
+};
+
 module.exports = {
     PDF_FORMATS,
     PDF_FORMATS_LIST,
@@ -174,6 +196,8 @@ module.exports = {
     DEFAULT_MARGIN,
     PDF_FULL_HEIGHTS,
     PAGE_LIMITS,
-    WORKER_CONCURRENCY
+    WORKER_CONCURRENCY,
+    CONCURRENCY,
+    MAX_MONTHLY_CREDITS
 };
 

@@ -1,12 +1,36 @@
 const express = require('express');
 const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
 const { validateJobOptions, isValidUrl } = require('../../config/validators');
-const { QUEUE } = require('../../config/constants');
+const { QUEUE, CONCURRENCY } = require('../../config/constants');
+const { createRedisConnection } = require('../../config/redis');
 const { supabase } = require('../../config/supabase');
 const { ensureCurrentBillingPeriod, checkCreditAvailability } = require('../../services/creditService');
 const { reportUsage } = require('../../services/stripeService');
 
 const router = express.Router();
+
+// Redis connection for concurrency tracking (shared with rate limiter pattern)
+let redisConnection;
+let redisInitFailed = false;
+(async () => {
+    try {
+        redisConnection = await createRedisConnection();
+    } catch (e) {
+        console.error('Jobs route: failed to init Redis for concurrency tracking:', e.message);
+        redisInitFailed = true;
+    }
+})();
+
+async function getActiveCount(apiKey) {
+    if (!redisConnection || redisInitFailed) return 0;
+    try {
+        const key = `concurrent:active:${apiKey}`;
+        const val = await redisConnection.get(key);
+        return val ? parseInt(val, 10) : 0;
+    } catch (e) {
+        return 0;
+    }
+}
 
 /**
  * POST /api/v1/jobs
@@ -35,6 +59,17 @@ router.post('/', async (req, res) => {
     }
 
     try {
+        // Enforce per-user active job concurrency limit
+        const tier = req.account?.tier || 'free';
+        const limit = tier === 'paid' ? CONCURRENCY.PAID_ACTIVE_MAX : CONCURRENCY.FREE_ACTIVE_MAX;
+        const activeCount = await getActiveCount(req.account.apiKey);
+        if (activeCount >= limit) {
+            return res.status(429).json({
+                error: 'Too many concurrent jobs',
+                details: `Limit is ${limit} active jobs for ${tier} tier. Please wait for existing jobs to finish.`
+            });
+        }
+
         // Ensure user is in current billing period (lazy evaluation fallback)
         let profile = await ensureCurrentBillingPeriod(req.account.userId);
         

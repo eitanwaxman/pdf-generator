@@ -30,8 +30,10 @@ const pdfQueue = new Queue('pdf-generation', {
  * @returns {Promise<string>} - Job ID
  */
 async function addPdfJob(url, options, account) {
-    // Determine priority based on account tier
-    const priority = account && account.tier === 'paid' ? PRIORITY.PAID_TIER : PRIORITY.FREE_TIER;
+    // Determine priority based on account tier (free/starter/pro)
+    let priority = PRIORITY.FREE;
+    if (account?.tier === 'starter') priority = PRIORITY.STARTER;
+    if (account?.tier === 'pro') priority = PRIORITY.PRO;
     
     const job = await pdfQueue.add(
         'generate-pdf',

@@ -64,15 +64,21 @@ async function ensureCurrentBillingPeriod(userId) {
     }
 }
 
+const { MAX_MONTHLY_CREDITS } = require('../config/constants');
+
 /**
  * Check if user has sufficient credits to create a job
+ * Applies runtime caps based on tier, regardless of DB values
  * Takes into account monthly credits, usage, and overage settings
  * 
  * @param {Object} profile - User profile object
  * @returns {Object} { allowed: boolean, reason?: string, details?: Object }
  */
 function checkCreditAvailability(profile) {
-    const creditsRemaining = profile.monthly_credits - profile.credits_used;
+    const tier = profile.tier || 'free';
+    const cap = MAX_MONTHLY_CREDITS[tier] ?? MAX_MONTHLY_CREDITS.free;
+    const effectiveMonthlyCredits = Math.min(profile.monthly_credits ?? 0, cap);
+    const creditsRemaining = effectiveMonthlyCredits - profile.credits_used;
     
     // User has credits remaining
     if (creditsRemaining > 0) {
@@ -93,7 +99,7 @@ function checkCreditAvailability(profile) {
         allowed: false,
         reason: 'Credit limit reached',
         details: {
-            monthly_credits: profile.monthly_credits,
+            monthly_credits: effectiveMonthlyCredits,
             credits_used: profile.credits_used,
             credits_remaining: 0,
             overage_enabled: profile.overage_enabled,
