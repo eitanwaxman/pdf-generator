@@ -9,7 +9,7 @@
     "dev:frontend": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "postinstall": "npx puppeteer browsers install chromium",
+    "postinstall": "npx puppeteer browsers install chrome",
     "test": "jest --testPathPattern=test/load",
     "test:load": "jest test/load",
     "test:load:basic": "jest test/load/basic-load.test.js",
