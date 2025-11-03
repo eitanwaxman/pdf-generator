@@ -11,7 +11,6 @@ A React-based custom web component that:
 - ✅ Displays a "Generate PDF" button on Wix sites
 - ✅ Shows loading states during PDF generation
 - ✅ Automatically downloads generated PDFs
-- ✅ Uploads PDFs to Wix Media Manager
 - ✅ Handles errors gracefully with user-friendly messages
 - ✅ Supports all PDF API options (format, margins, viewport, etc.)
 
@@ -138,7 +137,7 @@ platforms/wix/
 
 ### Integration
 - Seamless Wix Editor integration
-- Upload to Wix Media Manager
+- Automatic PDF downloads
 - Works with existing PDF API
 - Can run standalone or integrated
 

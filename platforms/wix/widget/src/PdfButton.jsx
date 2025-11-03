@@ -1,29 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@wix/sdk';
-import { files } from '@wix/site';
+import React, { useState } from 'react';
 
 const PdfButton = ({ config }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [wixClient, setWixClient] = useState(null);
-
-  useEffect(() => {
-    // Initialize Wix SDK client
-    const initWixClient = async () => {
-      try {
-        const client = createClient({
-          modules: { files }
-        });
-        setWixClient(client);
-      } catch (err) {
-        console.error('Failed to initialize Wix client:', err);
-        setError('Failed to initialize Wix SDK');
-      }
-    };
-
-    initWixClient();
-  }, []);
 
   const generatePdf = async () => {
     setLoading(true);
@@ -148,28 +128,6 @@ const PdfButton = ({ config }) => {
     try {
       // Convert base64 to blob
       const pdfBlob = base64ToBlob(pdfBase64, 'application/pdf');
-
-      // Upload to Wix Media Manager if client is available
-      if (wixClient) {
-        try {
-          // Generate upload URL
-          const uploadUrlResult = await wixClient.files.generateFileUploadUrl();
-          
-          // Upload the file
-          await fetch(uploadUrlResult.uploadUrl, {
-            method: 'POST',
-            body: pdfBlob,
-            headers: {
-              'Content-Type': 'application/pdf'
-            }
-          });
-
-          console.log('PDF uploaded to Wix Media Manager');
-        } catch (uploadErr) {
-          console.error('Failed to upload to Media Manager:', uploadErr);
-          // Continue with download even if upload fails
-        }
-      }
 
       // Download PDF to user's device
       downloadBlob(pdfBlob, `document-${Date.now()}.pdf`);

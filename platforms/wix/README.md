@@ -103,7 +103,7 @@ npm run dev
 - ✅ Configurable PDF format, margins, viewport
 - ✅ Platform-specific optimizations (Wix)
 - ✅ Screenshot generation support
-- ✅ Upload PDFs to Wix Media Manager
 - ✅ Automatic download to user's device
 - ✅ Loading states and error handling
+- ✅ Secure API key management via Wix Secrets Manager
 
