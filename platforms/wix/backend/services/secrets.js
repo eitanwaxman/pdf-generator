@@ -7,13 +7,13 @@ const { secrets } = require('@wix/secrets');
  */
 async function getApiKey(secretName = 'PDF_API_KEY') {
   try {
-    const apiKey = await secrets.getSecret(secretName);
+    const secret = await secrets.getSecretValue(secretName);
     
-    if (!apiKey) {
+    if (!secret || !secret.value) {
       throw new Error(`Secret '${secretName}' not found in Secrets Manager`);
     }
     
-    return apiKey;
+    return secret.value;
   } catch (error) {
     console.error('Error retrieving secret from Wix Secrets Manager:', error);
     throw new Error(`Failed to retrieve API key: ${error.message}`);
