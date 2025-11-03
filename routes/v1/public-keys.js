@@ -5,7 +5,7 @@ const {
     updatePublicKey, 
     deletePublicKey 
 } = require('../../services/publicApiKeyService');
-const { authenticate: supabaseAuth } = require('../../middleware/supabaseAuth');
+const { verifySupabaseToken: supabaseAuth } = require('../../middleware/supabaseAuth');
 
 const router = express.Router();
 
