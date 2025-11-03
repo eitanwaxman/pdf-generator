@@ -11,7 +11,12 @@ let initFailed = false;
     try {
         initAttempted = true;
         redisConnection = await createRedisConnection();
-        console.log('Rate limiter initialized successfully');
+        if (redisConnection === null) {
+            console.log('Redis connection unavailable - rate limiting will be disabled');
+            initFailed = true;
+        } else {
+            console.log('Rate limiter initialized successfully');
+        }
     } catch (error) {
         console.error('Failed to initialize rate limiter:', error.message);
         console.log('Rate limiting will be disabled. Starting without Redis...');

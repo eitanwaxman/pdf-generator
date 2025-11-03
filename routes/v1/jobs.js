@@ -15,6 +15,10 @@ let redisInitFailed = false;
 (async () => {
     try {
         redisConnection = await createRedisConnection();
+        if (redisConnection === null) {
+            console.log('Redis connection unavailable - concurrency tracking will use in-memory fallback');
+            redisInitFailed = true;
+        }
     } catch (e) {
         console.error('Jobs route: failed to init Redis for concurrency tracking:', e.message);
         redisInitFailed = true;

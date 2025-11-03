@@ -141,11 +141,8 @@ const createBullMQConnection = () => {
         console.log('BullMQ Redis connection closed');
     });
     
-    // Attempt to connect, but don't block on it
-    connection.connect().catch((err) => {
-        console.error('BullMQ Redis initial connection failed:', err.message);
-        console.log('Worker will retry connections as needed');
-    });
+    // With lazyConnect: true, connection happens automatically on first command
+    // This prevents blocking during startup and handles connection on-demand
     
     bullConnection = connection;
     return bullConnection;
