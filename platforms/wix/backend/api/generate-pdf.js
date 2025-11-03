@@ -31,18 +31,19 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Get Wix access token from Authorization header
-    const accessToken = req.headers.authorization;
-    if (!accessToken) {
+    // Get app instance from Authorization header
+    const appInstance = req.headers.authorization;
+    if (!appInstance) {
       return res.status(401).json({ 
-        error: 'Wix authorization token required' 
+        error: 'App instance required',
+        details: 'This endpoint requires Wix app instance authentication. Make sure the widget is properly installed on a Wix site.'
       });
     }
 
-    // Get API key from Wix Secrets Manager using the access token
+    // Get API key from Wix Secrets Manager using the app instance
     let apiKey;
     try {
-      apiKey = await getApiKey(accessToken);
+      apiKey = await getApiKey(appInstance);
     } catch (error) {
       console.error('Failed to retrieve API key:', error);
       return res.status(500).json({ 
@@ -96,16 +97,17 @@ router.get('/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
 
-    // Get Wix access token from Authorization header
-    const accessToken = req.headers.authorization;
-    if (!accessToken) {
+    // Get app instance from Authorization header
+    const appInstance = req.headers.authorization;
+    if (!appInstance) {
       return res.status(401).json({ 
-        error: 'Wix authorization token required' 
+        error: 'App instance required',
+        details: 'This endpoint requires Wix app instance authentication.'
       });
     }
 
-    // Get API key from Secrets Manager using the access token
-    const apiKey = await getApiKey(accessToken);
+    // Get API key from Secrets Manager using the app instance
+    const apiKey = await getApiKey(appInstance);
 
     // Determine the PDF API base URL
     const pdfApiUrl = process.env.PDF_API_URL || 'http://localhost:3000/api/v1';

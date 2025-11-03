@@ -29,14 +29,12 @@ const createRedisConnection = async () => {
         // Timeout and connection settings for deployment environments
         const socketOptions = {
             connectTimeout: 10000, // 10 seconds to connect
-            socketTimeout: 30000, // 30 seconds for read/write operations
+            // socketTimeout removed - was causing 30s timeout errors on reconnect attempts
             keepAlive: 30000, // Keep connection alive (30 seconds)
             reconnectStrategy: (retries) => {
-                if (retries > REDIS_RETRY.MAX_RETRIES) {
-                    console.error(`Redis connection failed after ${REDIS_RETRY.MAX_RETRIES} retries`);
-                    return false; // Stop retrying
-                }
-                return Math.min(retries * REDIS_RETRY.BACKOFF_MULTIPLIER, REDIS_RETRY.MAX_BACKOFF_MS);
+                // Disable automatic reconnection to prevent background retry loops
+                // If Redis is unavailable, we gracefully degrade instead of constantly retrying
+                return false; // Don't retry
             },
         };
         
@@ -59,7 +57,12 @@ const createRedisConnection = async () => {
         
         client.on('error', (err) => {
             console.error('Redis connection error:', err);
-            // Don't throw - allow graceful degradation
+            // Disconnect to prevent retry loops
+            try {
+                client.disconnect().catch(() => {});
+            } catch (e) {
+                // Ignore disconnect errors
+            }
         });
         
         try {
@@ -71,14 +74,24 @@ const createRedisConnection = async () => {
             
             await Promise.race([connectPromise, timeoutPromise]);
             console.log('Redis connected successfully');
+            return client;
         } catch (error) {
             console.error('Failed to connect to Redis:', error.message);
             console.log('Continuing without Redis - rate limiting will be disabled');
-            // Return null instead of throwing to allow graceful degradation
+            
+            // Disconnect the client to stop any background retry attempts
+            try {
+                await client.disconnect();
+            } catch (e) {
+                // Ignore disconnect errors
+            }
+            
+            // Reset cached promise so future calls don't get a broken connection
+            redisClientPromise = null;
+            
+            // Return null to allow graceful degradation
             return null;
         }
-        
-        return client;
     })();
 
     return redisClientPromise;

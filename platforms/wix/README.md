@@ -61,18 +61,24 @@ npm run build
 - Host `settings-panel/dist/` at a publicly accessible URL
 - Deploy backend service to your server
 
-### 4. Configure Application ID
+### 4. Configure App Secret
 
-**Important**: Before building, add your Wix App ID to the widget:
+**Important**: Add your Wix App Secret to environment variables:
 
 1. Go to [Wix Custom Apps](https://manage.wix.com/account/custom-apps)
 2. Select your app
-3. Copy the **App ID** (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-4. Open `platforms/wix/widget/src/index.js`
-5. Replace the `APP_ID` constant with your actual App ID:
-   ```javascript
-   const APP_ID = 'your-app-id-here';
+3. Go to **OAuth** page
+4. Copy your **App Secret Key**
+5. Add to environment variables:
+   ```bash
+   # Local: .env file
+   WIX_APP_SECRET=your-app-secret-here
+   
+   # Render.com: Environment Variables in dashboard
+   WIX_APP_SECRET=your-app-secret-here
    ```
+
+⚠️ **Keep this secret secure!** Never commit to version control.
 
 ### 5. Configure in Wix App Dashboard
 
@@ -150,8 +156,18 @@ ngrok http 3000
 ## Architecture
 
 - **Widget**: React-based custom element that displays a "Generate PDF" button
-- **Settings Panel**: React + Wix Design System UI for configuring PDF options
-- **Backend**: Express service that retrieves API keys from Wix Secrets Manager and calls PDF API
+- **Settings Panel**: React UI for configuring PDF options
+- **Backend**: Express service that validates app instances and retrieves API keys from Wix Secrets Manager
+
+### Authentication
+
+Uses **Wix App Instance** authentication (official method for self-hosted apps):
+- Widget gets signed instance from URL parameters (added automatically by Wix)
+- Sends instance to backend in Authorization header
+- Backend validates signature using app secret
+- Accesses site-specific Secrets Manager
+
+📖 See `APP_INSTANCE_AUTHENTICATION.md` for complete details.
 
 ## Features
 

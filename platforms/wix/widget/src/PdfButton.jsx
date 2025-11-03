@@ -11,17 +11,6 @@ const PdfButton = ({ config }) => {
     setSuccess(false);
 
     try {
-      // Get Wix access token for backend authentication
-      let accessToken = null;
-      if (config.wixClient) {
-        try {
-          accessToken = await config.wixClient.auth.getAccessToken();
-          console.log('Got Wix access token');
-        } catch (err) {
-          console.warn('Could not get Wix access token:', err);
-        }
-      }
-
       // Determine the URL to convert
       const urlToConvert = config.urlSource === 'custom' && config.customUrl
         ? config.customUrl
@@ -75,14 +64,17 @@ const PdfButton = ({ config }) => {
       
       console.log('Calling PDF API at:', backendUrl);
 
-      // Prepare headers
+      // Prepare headers with app instance for authentication
       const headers = {
         'Content-Type': 'application/json'
       };
       
-      // Add Wix authorization header if we have an access token
-      if (accessToken) {
-        headers['Authorization'] = accessToken;
+      // Add app instance for backend authentication
+      if (config.appInstance) {
+        headers['Authorization'] = config.appInstance;
+        console.log('Sending authenticated request with app instance');
+      } else {
+        console.warn('No app instance available - request may fail');
       }
 
       // Call backend API
@@ -104,7 +96,7 @@ const PdfButton = ({ config }) => {
 
       // If job-based, poll for completion
       if (result.jobId) {
-        const pdf = await pollForJobCompletion(backendUrl, result.jobId, accessToken);
+        const pdf = await pollForJobCompletion(backendUrl, result.jobId, config.appInstance);
         await handlePdfResult(pdf);
       } else if (result.pdf) {
         // Direct PDF result
@@ -123,14 +115,14 @@ const PdfButton = ({ config }) => {
     }
   };
 
-  const pollForJobCompletion = async (backendUrl, jobId, accessToken, maxAttempts = 60) => {
+  const pollForJobCompletion = async (backendUrl, jobId, appInstance, maxAttempts = 60) => {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
-      // Prepare headers with access token
+      // Prepare headers with app instance
       const headers = {};
-      if (accessToken) {
-        headers['Authorization'] = accessToken;
+      if (appInstance) {
+        headers['Authorization'] = appInstance;
       }
 
       const statusResponse = await fetch(`${backendUrl}/${jobId}`, { headers });
