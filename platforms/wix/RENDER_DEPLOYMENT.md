@@ -58,12 +58,12 @@ That's it! Render will automatically:
 
 ## After Deployment
 
-Once deployed, your Wix widget files will be accessible at:
+Once deployed to docuskribe.com, your Wix widget files are accessible at:
 
 ```
-https://your-app.onrender.com/wix/widget/dist/bundle.js
-https://your-app.onrender.com/wix/settings-panel/dist/index.html
-https://your-app.onrender.com/wix/api/generate-pdf
+https://www.docuskribe.com/wix/widget/dist/bundle.js
+https://www.docuskribe.com/wix/settings-panel/dist/index.html
+https://www.docuskribe.com/wix/api/generate-pdf
 ```
 
 ## Configure in Wix App Dashboard
@@ -74,8 +74,8 @@ https://your-app.onrender.com/wix/api/generate-pdf
 4. Configure:
    - **Widget Name**: PDF Generator Button
    - **Tag Name**: `pdf-generator-button`
-   - **Script URL**: `https://your-app.onrender.com/wix/widget/dist/bundle.js`
-   - **Settings Panel URL**: `https://your-app.onrender.com/wix/settings-panel/dist/index.html`
+   - **Script URL**: `https://www.docuskribe.com/wix/widget/dist/bundle.js`
+   - **Settings Panel URL**: `https://www.docuskribe.com/wix/settings-panel/dist/index.html`
 
 ## Wix Secrets Manager Setup
 
@@ -98,12 +98,12 @@ For each site that installs your widget:
 ## Troubleshooting
 
 ### Widget doesn't load
-- Check: `https://your-app.onrender.com/wix/widget/dist/bundle.js` in browser
+- Check: `https://www.docuskribe.com/wix/widget/dist/bundle.js` in browser
 - Should return JavaScript code
 - Check Render logs for build errors
 
 ### Settings panel blank
-- Check: `https://your-app.onrender.com/wix/settings-panel/dist/index.html` in browser
+- Check: `https://www.docuskribe.com/wix/settings-panel/dist/index.html` in browser
 - Should show the settings interface
 - Check browser console for errors
 
@@ -153,14 +153,14 @@ After deployment:
 
 ## URLs Summary
 
-After deployment, you'll have these URLs:
+The widget is deployed at docuskribe.com with these URLs:
 
 | Component | URL |
 |-----------|-----|
-| Widget Script | `https://your-app.onrender.com/wix/widget/dist/bundle.js` |
-| Settings Panel | `https://your-app.onrender.com/wix/settings-panel/dist/index.html` |
-| PDF Generation API | `https://your-app.onrender.com/wix/api/generate-pdf` |
-| Job Status API | `https://your-app.onrender.com/wix/api/generate-pdf/:jobId` |
+| Widget Script | `https://www.docuskribe.com/wix/widget/dist/bundle.js` |
+| Settings Panel | `https://www.docuskribe.com/wix/settings-panel/dist/index.html` |
+| PDF Generation API | `https://www.docuskribe.com/wix/api/generate-pdf` |
+| Job Status API | `https://www.docuskribe.com/wix/api/generate-pdf/:jobId` |
 
 Use these URLs when configuring your widget in the Wix App Dashboard.
 

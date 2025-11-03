@@ -111,7 +111,7 @@ export WIX_BACKEND_PORT=3001
 4. Configure the widget:
    - **Widget Name**: `PDF Generator Button`
    - **Tag Name**: `pdf-generator-button`
-   - **Script URL**: `https://your-domain.com/wix/widget/dist/bundle.js`
+   - **Script URL**: `https://www.docuskribe.com/wix/widget/dist/bundle.js`
    
 5. Set widget sizing:
    - **Widget Width**: Adjustable, default 200px
@@ -122,7 +122,7 @@ export WIX_BACKEND_PORT=3001
    - ✅ Display in Add Elements panel
 
 7. Configure action bar:
-   - **Settings Panel URL**: `https://your-domain.com/wix/settings-panel/dist/index.html`
+   - **Settings Panel URL**: `https://www.docuskribe.com/wix/settings-panel/dist/index.html`
 
 8. Click **Save**
 

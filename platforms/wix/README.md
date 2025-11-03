@@ -69,8 +69,8 @@ npm run build
 4. Configure:
    - **Widget Name**: PDF Generator Button
    - **Tag Name**: `pdf-generator-button`
-   - **Script URL**: `https://your-server.com/wix/widget/dist/bundle.js`
-   - **Settings Panel URL**: `https://your-server.com/wix/settings-panel/dist/index.html`
+   - **Script URL**: `https://www.docuskribe.com/wix/widget/dist/bundle.js`
+   - **Settings Panel URL**: `https://www.docuskribe.com/wix/settings-panel/dist/index.html`
 
 ### 5. Configure Secrets (Site Owners)
 

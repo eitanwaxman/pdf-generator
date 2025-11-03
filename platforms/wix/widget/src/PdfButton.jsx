@@ -59,8 +59,10 @@ const PdfButton = ({ config }) => {
         options.data = config.data;
       }
 
-      // Use default backend URL
-      const backendUrl = `${window.location.origin}/wix/api/generate-pdf`;
+      // Use Docuskribe API endpoint
+      const backendUrl = 'https://www.docuskribe.com/wix/api/generate-pdf';
+      
+      console.log('Calling PDF API at:', backendUrl);
 
       // Call backend API
       const response = await fetch(backendUrl, {
