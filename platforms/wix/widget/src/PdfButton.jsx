@@ -64,17 +64,17 @@ const PdfButton = ({ config }) => {
       
       console.log('Calling PDF API at:', backendUrl);
 
-      // Prepare headers with app instance for authentication
+      // Prepare headers with access token for authentication
       const headers = {
         'Content-Type': 'application/json'
       };
       
-      // Add app instance for backend authentication
-      if (config.appInstance) {
-        headers['Authorization'] = config.appInstance;
-        console.log('Sending authenticated request with app instance');
+      // Add access token for backend authentication
+      if (config.accessToken) {
+        headers['Authorization'] = config.accessToken;
+        console.log('Sending authenticated request with access token');
       } else {
-        console.warn('No app instance available - request may fail');
+        console.warn('No access token available - request may fail');
       }
 
       // Call backend API
@@ -96,7 +96,7 @@ const PdfButton = ({ config }) => {
 
       // If job-based, poll for completion
       if (result.jobId) {
-        const pdf = await pollForJobCompletion(backendUrl, result.jobId, config.appInstance);
+        const pdf = await pollForJobCompletion(backendUrl, result.jobId, config.accessToken);
         await handlePdfResult(pdf);
       } else if (result.pdf) {
         // Direct PDF result
@@ -115,14 +115,14 @@ const PdfButton = ({ config }) => {
     }
   };
 
-  const pollForJobCompletion = async (backendUrl, jobId, appInstance, maxAttempts = 60) => {
+  const pollForJobCompletion = async (backendUrl, jobId, accessToken, maxAttempts = 60) => {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
-      // Prepare headers with app instance
+      // Prepare headers with access token
       const headers = {};
-      if (appInstance) {
-        headers['Authorization'] = appInstance;
+      if (accessToken) {
+        headers['Authorization'] = accessToken;
       }
 
       const statusResponse = await fetch(`${backendUrl}/${jobId}`, { headers });

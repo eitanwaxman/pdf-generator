@@ -61,24 +61,26 @@ npm run build
 - Host `settings-panel/dist/` at a publicly accessible URL
 - Deploy backend service to your server
 
-### 4. Configure App Secret
+### 4. Configure App Credentials
 
-**Important**: Add your Wix App Secret to environment variables:
+**Important**: Add your Wix App ID and Secret to environment variables:
 
 1. Go to [Wix Custom Apps](https://manage.wix.com/account/custom-apps)
 2. Select your app
-3. Go to **OAuth** page
-4. Copy your **App Secret Key**
+3. Copy your **App ID** from app details
+4. Go to **OAuth** page and copy your **App Secret Key**
 5. Add to environment variables:
    ```bash
    # Local: .env file
+   WIX_APP_ID=b715943d-8922-43a5-8728-c77c19d77879
    WIX_APP_SECRET=your-app-secret-here
    
    # Render.com: Environment Variables in dashboard
+   WIX_APP_ID=b715943d-8922-43a5-8728-c77c19d77879
    WIX_APP_SECRET=your-app-secret-here
    ```
 
-⚠️ **Keep this secret secure!** Never commit to version control.
+⚠️ **Keep the secret secure!** Never commit to version control.
 
 ### 5. Configure in Wix App Dashboard
 
@@ -161,13 +163,14 @@ ngrok http 3000
 
 ### Authentication
 
-Uses **Wix App Instance** authentication (official method for self-hosted apps):
-- Widget gets signed instance from URL parameters (added automatically by Wix)
-- Sends instance to backend in Authorization header
-- Backend validates signature using app secret
+Uses **Wix Access Token with AppStrategy** (official method for self-hosted apps):
+- Widget gets access token from Wix SDK
+- Sends token to backend in Authorization header
+- Backend decodes token to get instance ID
+- Backend uses AppStrategy with elevated permissions
 - Accesses site-specific Secrets Manager
 
-📖 See `APP_INSTANCE_AUTHENTICATION.md` for complete details.
+📖 See `ACCESS_TOKEN_AUTHENTICATION.md` for complete details.
 
 ## Features
 

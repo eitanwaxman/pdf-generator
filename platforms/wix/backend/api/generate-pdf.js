@@ -31,19 +31,19 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Get app instance from Authorization header
-    const appInstance = req.headers.authorization;
-    if (!appInstance) {
+    // Get access token from Authorization header
+    const accessToken = req.headers.authorization;
+    if (!accessToken) {
       return res.status(401).json({ 
-        error: 'App instance required',
-        details: 'This endpoint requires Wix app instance authentication. Make sure the widget is properly installed on a Wix site.'
+        error: 'Access token required',
+        details: 'This endpoint requires Wix access token. Make sure the widget is properly installed on a Wix site.'
       });
     }
 
-    // Get API key from Wix Secrets Manager using the app instance
+    // Get API key from Wix Secrets Manager using the access token
     let apiKey;
     try {
-      apiKey = await getApiKey(appInstance);
+      apiKey = await getApiKey(accessToken);
     } catch (error) {
       console.error('Failed to retrieve API key:', error);
       return res.status(500).json({ 
@@ -97,17 +97,17 @@ router.get('/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
 
-    // Get app instance from Authorization header
-    const appInstance = req.headers.authorization;
-    if (!appInstance) {
+    // Get access token from Authorization header
+    const accessToken = req.headers.authorization;
+    if (!accessToken) {
       return res.status(401).json({ 
-        error: 'App instance required',
-        details: 'This endpoint requires Wix app instance authentication.'
+        error: 'Access token required',
+        details: 'This endpoint requires Wix access token.'
       });
     }
 
-    // Get API key from Secrets Manager using the app instance
-    const apiKey = await getApiKey(appInstance);
+    // Get API key from Secrets Manager using the access token
+    const apiKey = await getApiKey(accessToken);
 
     // Determine the PDF API base URL
     const pdfApiUrl = process.env.PDF_API_URL || 'http://localhost:3000/api/v1';

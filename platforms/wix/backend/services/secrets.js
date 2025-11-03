@@ -1,80 +1,62 @@
-const crypto = require('crypto');
-const { createClient } = require('@wix/sdk');
+const axios = require('axios');
+const { createClient, AppStrategy } = require('@wix/sdk');
 const { secrets } = require('@wix/secrets');
 
 /**
- * Parse and validate the Wix app instance
- * @param {string} instance - The signed app instance string from frontend
- * @param {string} appSecret - Your app's secret key from Wix Dashboard
- * @returns {Object} - Parsed instance data with instanceId, uid, etc.
+ * Get instance ID from access token by calling Wix token-info endpoint
+ * @param {string} accessToken - The access token from frontend
+ * @returns {Promise<string>} - The instance ID
  */
-function parseInstance(instance, appSecret) {
+async function getInstanceIdFromToken(accessToken) {
   try {
-    // Split the instance into signature and data
-    const parts = instance.split('.');
-    if (parts.length !== 2) {
-      throw new Error('Invalid instance format - expected signature.data');
-    }
-
-    const [signature, encodedData] = parts;
+    const response = await axios.post(
+      'https://www.wixapis.com/oauth2/token-info',
+      { token: accessToken }
+    );
     
-    if (!signature || !encodedData) {
-      throw new Error('Invalid instance format - missing signature or data');
-    }
-
-    // Verify the signature using HMAC-SHA256
-    const expectedSignature = crypto
-      .createHmac('sha256', appSecret)
-      .update(encodedData)
-      .digest('base64url');
-
-    if (signature !== expectedSignature) {
-      throw new Error('Invalid signature - instance authentication failed');
-    }
-
-    // Decode the data (base64url)
-    const decodedData = Buffer.from(encodedData, 'base64url').toString('utf-8');
-    const instanceData = JSON.parse(decodedData);
-
-    console.log('Instance validated successfully. Instance ID:', instanceData.instanceId);
-    return instanceData;
+    const instanceId = response.data.instanceId;
+    console.log('Instance ID from token:', instanceId);
+    return instanceId;
   } catch (error) {
-    console.error('Error parsing instance:', error);
-    throw new Error(`Failed to parse instance: ${error.message}`);
+    console.error('Error decoding token:', error);
+    throw new Error(`Failed to decode access token: ${error.message}`);
   }
 }
 
 /**
- * Retrieve the PDF API key from Wix Secrets Manager using app instance
- * @param {string} appInstanceString - The app instance from frontend Authorization header
+ * Retrieve the PDF API key from Wix Secrets Manager using access token
+ * Uses AppStrategy with elevated permissions to access Secrets Manager
+ * @param {string} accessToken - The access token from frontend Authorization header
  * @param {string} secretName - Name of the secret in Wix Secrets Manager (default: PDF_API_KEY)
  * @returns {Promise<string>} - The API key value
  */
-async function getApiKey(appInstanceString, secretName = 'PDF_API_KEY') {
+async function getApiKey(accessToken, secretName = 'PDF_API_KEY') {
   try {
-    // Get app secret from environment
+    // Get app credentials from environment
+    const APP_ID = process.env.WIX_APP_ID || 'b715943d-8922-43a5-8728-c77c19d77879';
     const APP_SECRET = process.env.WIX_APP_SECRET;
+    
     if (!APP_SECRET) {
       throw new Error('WIX_APP_SECRET environment variable not configured');
     }
 
-    // Parse and validate the instance
-    const instanceData = parseInstance(appInstanceString, APP_SECRET);
+    // Decode token to get instance ID (for logging purposes)
+    const instanceId = await getInstanceIdFromToken(accessToken);
+    console.log('Accessing Secrets Manager for instance:', instanceId);
     
-    console.log('Accessing Secrets Manager for instance:', instanceData.instanceId);
-
-    // Create Wix client using the app instance for authentication
-    const wixClient = createClient({
-      auth: {
-        getAuthHeaders: () => ({
-          Authorization: appInstanceString
-        })
-      },
+    // Create elevated client using AppStrategy
+    // This gives backend elevated permissions to access Secrets Manager
+    const elevatedClient = createClient({
+      auth: await AppStrategy({
+        appId: APP_ID,
+        appSecret: APP_SECRET,
+        accessToken: accessToken
+      }).elevated(),
       modules: { secrets }
     });
 
-    // Get the secret value from this site's Secrets Manager
-    const secret = await wixClient.secrets.getSecretValue(secretName);
+    // Get secret from this site's Secrets Manager
+    const secret = await elevatedClient.secrets.getSecretValue(secretName);
     
     if (!secret || !secret.value) {
       throw new Error(
@@ -83,7 +65,7 @@ async function getApiKey(appInstanceString, secretName = 'PDF_API_KEY') {
       );
     }
 
-    console.log('Successfully retrieved API key for instance:', instanceData.instanceId);
+    console.log('Successfully retrieved API key for instance:', instanceId);
     return secret.value;
   } catch (error) {
     console.error('Error retrieving API key:', error);
@@ -93,6 +75,6 @@ async function getApiKey(appInstanceString, secretName = 'PDF_API_KEY') {
 
 module.exports = {
   getApiKey,
-  parseInstance
+  getInstanceIdFromToken
 };
 

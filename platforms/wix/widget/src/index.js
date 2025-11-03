@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import PdfButton from './PdfButton.jsx';
 import './styles.css';
+import { createClient } from '@wix/sdk';
+import { site } from '@wix/site';
 
 class PdfGeneratorButton extends HTMLElement {
   static get observedAttributes() {
@@ -31,28 +33,33 @@ class PdfGeneratorButton extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.config = {};
+    this.accessToken = null;
     
-    // Get app instance from URL query parameters
-    // Wix automatically adds ?instance=... to iframe URLs
-    this.appInstance = this.getAppInstance();
+    // Initialize Wix Client
+    const APP_ID = 'b715943d-8922-43a5-8728-c77c19d77879';
     
-    if (this.appInstance) {
-      console.log('Wix app instance found');
-    } else {
-      console.warn('No app instance found - widget may not work on Wix site');
+    try {
+      this.wixClient = createClient({
+        host: site.host({ applicationId: APP_ID }),
+        auth: site.auth()
+      });
+      console.log('Wix client initialized');
+    } catch (err) {
+      console.error('Failed to initialize Wix client:', err);
     }
   }
 
-  /**
-   * Get app instance from URL query parameters
-   * Wix adds this automatically when the widget loads
-   */
-  getAppInstance() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('instance') || null;
-  }
-
-  connectedCallback() {
+  async connectedCallback() {
+    // Get access token asynchronously
+    if (this.wixClient) {
+      try {
+        this.accessToken = await this.wixClient.auth.getAccessToken();
+        console.log('Got Wix access token');
+      } catch (err) {
+        console.warn('Could not get access token:', err);
+      }
+    }
+    
     this.updateConfig();
     this.render();
     
@@ -131,7 +138,7 @@ class PdfGeneratorButton extends HTMLElement {
       buttonText: this.getAttribute('button-text') || 'Generate PDF',
       backendUrl: this.getAttribute('backend-url') || undefined,
       data: this.parseData(),
-      appInstance: this.appInstance  // Pass app instance for authentication
+      accessToken: this.accessToken  // Pass access token for authentication
     };
   }
 
