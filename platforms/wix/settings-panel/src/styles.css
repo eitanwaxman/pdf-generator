@@ -1,0 +1,81 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: #f9fafb;
+}
+
+#settings-root {
+  padding: 20px;
+  max-width: 600px;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #162d3d;
+}
+
+.field-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.key-value-pair {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.key-value-pair input {
+  flex: 1;
+}
+
+.remove-btn {
+  background-color: #ff4040;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.remove-btn:hover {
+  background-color: #e03636;
+}
+
+.add-btn {
+  background-color: #116dff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.add-btn:hover {
+  background-color: #0f5edb;
+}
+
+.save-footer {
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  border-top: 1px solid #e5e5e5;
+  padding: 16px;
+  margin: -20px;
+  margin-top: 24px;
+}
+

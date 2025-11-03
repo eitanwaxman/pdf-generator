@@ -1,0 +1,20 @@
+{
+  "name": "wix-pdf-generator-backend",
+  "version": "1.0.0",
+  "description": "Wix PDF Generator Backend Extension",
+  "main": "api/generate-pdf.js",
+  "scripts": {
+    "start": "node api/generate-pdf.js"
+  },
+  "keywords": ["wix", "pdf", "backend"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@wix/sdk": "^1.12.0",
+    "@wix/secrets": "^1.0.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.6.0"
+  }
+}
+
