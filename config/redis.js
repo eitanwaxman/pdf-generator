@@ -26,20 +26,31 @@ const createRedisConnection = async () => {
     redisClientPromise = (async () => {
         let client;
         
+        // Timeout and connection settings for deployment environments
+        const socketOptions = {
+            connectTimeout: 10000, // 10 seconds to connect
+            socketTimeout: 30000, // 30 seconds for read/write operations
+            keepAlive: 30000, // Keep connection alive (30 seconds)
+            reconnectStrategy: (retries) => {
+                if (retries > REDIS_RETRY.MAX_RETRIES) {
+                    console.error(`Redis connection failed after ${REDIS_RETRY.MAX_RETRIES} retries`);
+                    return false; // Stop retrying
+                }
+                return Math.min(retries * REDIS_RETRY.BACKOFF_MULTIPLIER, REDIS_RETRY.MAX_BACKOFF_MS);
+            },
+        };
+        
         if (process.env.REDIS_URL) {
-            client = createClient({ url: process.env.REDIS_URL });
+            client = createClient({ 
+                url: process.env.REDIS_URL,
+                socket: socketOptions
+            });
         } else {
             client = createClient({
                 socket: {
                     host: redisConfig.host,
                     port: redisConfig.port,
-                    reconnectStrategy: (retries) => {
-                        if (retries > REDIS_RETRY.MAX_RETRIES) {
-                            console.error(`Redis connection failed after ${REDIS_RETRY.MAX_RETRIES} retries`);
-                            return false; // Stop retrying
-                        }
-                        return Math.min(retries * REDIS_RETRY.BACKOFF_MULTIPLIER, REDIS_RETRY.MAX_BACKOFF_MS);
-                    },
+                    ...socketOptions,
                 },
                 password: redisConfig.password,
                 database: redisConfig.db,
@@ -48,14 +59,23 @@ const createRedisConnection = async () => {
         
         client.on('error', (err) => {
             console.error('Redis connection error:', err);
+            // Don't throw - allow graceful degradation
         });
         
         try {
-            await client.connect();
+            // Set a timeout for the connection attempt
+            const connectPromise = client.connect();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Redis connection timeout')), 10000)
+            );
+            
+            await Promise.race([connectPromise, timeoutPromise]);
             console.log('Redis connected successfully');
         } catch (error) {
             console.error('Failed to connect to Redis:', error.message);
-            throw error;
+            console.log('Continuing without Redis - rate limiting will be disabled');
+            // Return null instead of throwing to allow graceful degradation
+            return null;
         }
         
         return client;
@@ -72,9 +92,14 @@ let bullConnection = null;
 const createBullMQConnection = () => {
     if (bullConnection) return bullConnection;
 
-    const bullConfig = {
-        ...redisConfig,
+    // Timeout and connection settings for deployment environments
+    const connectionOptions = {
         maxRetriesPerRequest: null, // Required for BullMQ
+        connectTimeout: 10000, // 10 seconds to connect
+        commandTimeout: 30000, // 30 seconds for commands
+        keepAlive: 30000, // Keep connection alive
+        enableReadyCheck: false,
+        lazyConnect: true, // Connect lazily to prevent blocking startup
         retryStrategy: (times) => {
             if (times > REDIS_RETRY.MAX_RETRIES) {
                 console.error(`BullMQ Redis connection failed after ${REDIS_RETRY.MAX_RETRIES} retries`);
@@ -82,28 +107,44 @@ const createBullMQConnection = () => {
             }
             return Math.min(times * REDIS_RETRY.BACKOFF_MULTIPLIER, REDIS_RETRY.MAX_BACKOFF_MS);
         },
-        enableReadyCheck: false,
-        lazyConnect: false,
+        reconnectOnError: (err) => {
+            const targetError = 'READONLY';
+            if (err.message.includes(targetError)) {
+                // Reconnect on READONLY error
+                return true;
+            }
+            return false;
+        },
     };
     
     const connection = process.env.REDIS_URL 
-        ? new Redis(process.env.REDIS_URL, { 
-            maxRetriesPerRequest: null,
-            retryStrategy: bullConfig.retryStrategy,
-            enableReadyCheck: false,
-        })
-        : new Redis(bullConfig);
+        ? new Redis(process.env.REDIS_URL, connectionOptions)
+        : new Redis({
+            ...redisConfig,
+            ...connectionOptions,
+        });
     
     connection.on('error', (err) => {
         console.error('BullMQ Redis connection error:', err.message);
+        // Log but don't crash - allow graceful degradation
     });
     
     connection.on('connect', () => {
         console.log('BullMQ Redis connected successfully');
     });
     
+    connection.on('ready', () => {
+        console.log('BullMQ Redis ready');
+    });
+    
     connection.on('close', () => {
         console.log('BullMQ Redis connection closed');
+    });
+    
+    // Attempt to connect, but don't block on it
+    connection.connect().catch((err) => {
+        console.error('BullMQ Redis initial connection failed:', err.message);
+        console.log('Worker will retry connections as needed');
     });
     
     bullConnection = connection;
