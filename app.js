@@ -45,7 +45,8 @@ app.use(express.urlencoded({ extended: true }));
 // Static file serving for temporary PDFs
 app.use('/temp', express.static('temp'));
 
-// Serve Wix widget files
+// Serve Wix widget files and test page
+app.use('/wix', express.static('platforms/wix'));
 app.use('/wix/widget/dist', express.static('platforms/wix/widget/dist'));
 app.use('/wix/settings-panel/dist', express.static('platforms/wix/settings-panel/dist'));
 

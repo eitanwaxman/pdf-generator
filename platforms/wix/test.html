@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wix PDF Generator Widget - Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      color: #1a202c;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #718096;
+      font-size: 16px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #48bb78;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+      text-transform: uppercase;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #1a202c;
+      margin-bottom: 20px;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h2::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: #667eea;
+      border-radius: 2px;
+    }
+
+    .widget-demo {
+      padding: 40px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 2px dashed #cbd5e0;
+      text-align: center;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .widget-demo-label {
+      color: #718096;
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .settings-panel-container {
+      width: 100%;
+      height: 600px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+    }
+
+    .settings-panel-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .info-section {
+      background: #edf2f7;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .info-section h3 {
+      color: #2d3748;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .info-section code {
+      background: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      color: #e53e3e;
+      font-size: 14px;
+    }
+
+    .info-section ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .info-section li {
+      padding: 8px 0;
+      color: #4a5568;
+      font-size: 14px;
+    }
+
+    .info-section li::before {
+      content: '✓';
+      color: #48bb78;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    .console-output {
+      background: #1a202c;
+      color: #68d391;
+      padding: 20px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+
+    .console-output .log {
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+
+    .console-output .error {
+      color: #fc8181;
+    }
+
+    .console-output .success {
+      color: #68d391;
+    }
+
+    .console-output .info {
+      color: #90cdf4;
+    }
+
+    .console-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .console-header h3 {
+      color: #2d3748;
+      font-size: 16px;
+    }
+
+    .clear-btn {
+      background: #e53e3e;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .clear-btn:hover {
+      background: #c53030;
+    }
+
+    .test-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .test-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .test-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+
+    .test-btn.secondary {
+      background: #48bb78;
+    }
+
+    .test-btn.secondary:hover {
+      background: #38a169;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #48bb78;
+      animation: pulse 2s infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 768px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <span class="status-indicator"></span>
+        Wix PDF Generator Widget - Test Page
+        <span class="badge">Local Testing</span>
+      </h1>
+      <p>Test your widget and settings panel integration locally before deploying to Wix</p>
+    </div>
+
+    <div class="grid">
+      <!-- Widget Demo -->
+      <div class="card">
+        <h2>Widget Preview</h2>
+        <div class="widget-demo">
+          <div class="widget-demo-label">Your Widget Appears Below</div>
+          
+          <!-- THE ACTUAL WIDGET -->
+          <pdf-generator-button
+            url-source="current"
+            pdf-format="A4"
+            pdf-margin-top="50px"
+            pdf-margin-right="50px"
+            pdf-margin-bottom="50px"
+            pdf-margin-left="50px"
+            form-factor="desktop"
+            output-type="pdf"
+            button-text="Generate PDF"
+          ></pdf-generator-button>
+        </div>
+
+        <div class="info-section">
+          <h3>Current Widget Configuration:</h3>
+          <ul id="widget-config">
+            <li>Loading widget attributes...</li>
+          </ul>
+        </div>
+
+        <div class="test-buttons">
+          <button class="test-btn" onclick="testPdfGeneration()">
+            Test PDF Generation
+          </button>
+          <button class="test-btn secondary" onclick="inspectWidget()">
+            Inspect Widget
+          </button>
+          <button class="test-btn secondary" onclick="reloadWidget()">
+            Reload Widget
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="card">
+        <h2>Settings Panel</h2>
+        <div class="settings-panel-container">
+          <iframe src="./settings-panel/dist/index.html"></iframe>
+        </div>
+        
+        <div class="info-section">
+          <h3>How to Test Settings:</h3>
+          <ul>
+            <li>Change settings in the panel above</li>
+            <li>Click "Save Settings"</li>
+            <li>Watch the console below for messages</li>
+            <li>Widget should update automatically</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Console Output -->
+      <div class="card full-width">
+        <div class="console-header">
+          <h2>Console Output</h2>
+          <button class="clear-btn" onclick="clearConsole()">Clear Console</button>
+        </div>
+        <div class="console-output" id="console">
+          <div class="log info">[INFO] Test page loaded successfully</div>
+          <div class="log info">[INFO] Listening for widget events...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the widget script -->
+  <script src="./widget/dist/bundle.js"></script>
+
+  <script>
+    // Console logging
+    function logToConsole(message, type = 'info') {
+      const consoleEl = document.getElementById('console');
+      const logEl = document.createElement('div');
+      logEl.className = `log ${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      logEl.textContent = `[${timestamp}] ${message}`;
+      consoleEl.appendChild(logEl);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearConsole() {
+      document.getElementById('console').innerHTML = '';
+      logToConsole('Console cleared', 'info');
+    }
+
+    // Override console methods to capture logs
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      logToConsole(args.join(' '), 'info');
+    };
+
+    console.error = function(...args) {
+      originalError.apply(console, args);
+      logToConsole(args.join(' '), 'error');
+    };
+
+    console.warn = function(...args) {
+      originalWarn.apply(console, args);
+      logToConsole(args.join(' '), 'error');
+    };
+
+    // Listen for postMessage from settings panel
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'pdf-settings-update') {
+        logToConsole('Settings update received!', 'success');
+        logToConsole(JSON.stringify(event.data.settings, null, 2), 'info');
+        updateWidgetConfig();
+      }
+    });
+
+    // Update widget config display
+    function updateWidgetConfig() {
+      const widget = document.querySelector('pdf-generator-button');
+      const configList = document.getElementById('widget-config');
+      
+      if (!widget) {
+        configList.innerHTML = '<li>Widget not found</li>';
+        return;
+      }
+
+      const attributes = {
+        'URL Source': widget.getAttribute('url-source') || 'current',
+        'Custom URL': widget.getAttribute('custom-url') || 'none',
+        'PDF Format': widget.getAttribute('pdf-format') || 'A4',
+        'Form Factor': widget.getAttribute('form-factor') || 'desktop',
+        'Output Type': widget.getAttribute('output-type') || 'pdf',
+        'Button Text': widget.getAttribute('button-text') || 'Generate PDF'
+      };
+
+      configList.innerHTML = Object.entries(attributes)
+        .map(([key, value]) => `<li><strong>${key}:</strong> ${value}</li>`)
+        .join('');
+    }
+
+    // Test PDF generation
+    function testPdfGeneration() {
+      logToConsole('Testing PDF generation...', 'info');
+      const widget = document.querySelector('pdf-generator-button');
+      if (widget && widget.shadowRoot) {
+        const button = widget.shadowRoot.querySelector('button');
+        if (button) {
+          button.click();
+          logToConsole('Widget button clicked programmatically', 'success');
+        } else {
+          logToConsole('Button not found in shadow DOM', 'error');
+        }
+      } else {
+        logToConsole('Widget or shadow DOM not found', 'error');
+      }
+    }
+
+    // Inspect widget
+    function inspectWidget() {
+      const widget = document.querySelector('pdf-generator-button');
+      if (widget) {
+        logToConsole('Widget element found:', 'success');
+        logToConsole(`Tag name: ${widget.tagName}`, 'info');
+        logToConsole(`Shadow DOM: ${widget.shadowRoot ? 'Yes' : 'No'}`, 'info');
+        logToConsole(`Attributes: ${widget.attributes.length}`, 'info');
+        
+        Array.from(widget.attributes).forEach(attr => {
+          logToConsole(`  ${attr.name}: ${attr.value}`, 'info');
+        });
+        
+        console.dir(widget);
+      } else {
+        logToConsole('Widget not found', 'error');
+      }
+    }
+
+    // Reload widget
+    function reloadWidget() {
+      logToConsole('Reloading widget...', 'info');
+      const widget = document.querySelector('pdf-generator-button');
+      if (widget) {
+        const parent = widget.parentNode;
+        const newWidget = widget.cloneNode(true);
+        parent.removeChild(widget);
+        parent.appendChild(newWidget);
+        logToConsole('Widget reloaded', 'success');
+        setTimeout(updateWidgetConfig, 100);
+      }
+    }
+
+    // Initialize
+    window.addEventListener('load', () => {
+      logToConsole('Window loaded', 'success');
+      setTimeout(() => {
+        updateWidgetConfig();
+        logToConsole('Widget configuration loaded', 'success');
+      }, 1000);
+    });
+
+    // Widget loaded check
+    if (customElements.get('pdf-generator-button')) {
+      logToConsole('Custom element "pdf-generator-button" registered successfully', 'success');
+    } else {
+      setTimeout(() => {
+        if (customElements.get('pdf-generator-button')) {
+          logToConsole('Custom element "pdf-generator-button" registered successfully', 'success');
+        } else {
+          logToConsole('Custom element not registered - check bundle.js', 'error');
+        }
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
+

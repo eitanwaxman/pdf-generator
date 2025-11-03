@@ -91,6 +91,49 @@ cd settings-panel
 npm run dev
 ```
 
+## Local Testing
+
+### Quick Test Page
+
+The easiest way to test your widget locally:
+
+1. **Start your server**:
+```bash
+npm start  # from project root
+```
+
+2. **Open the test page**:
+```
+http://localhost:3000/wix/test.html
+```
+
+This provides a complete testing environment:
+- ✅ Live widget preview
+- ✅ Interactive settings panel
+- ✅ Real-time console logging
+- ✅ Test buttons for debugging
+- ✅ Attribute inspector
+
+📖 **See `TEST_PAGE_INSTRUCTIONS.md` for detailed testing guide.**
+
+### Testing in Wix Editor
+
+For testing with the actual Wix editor, you'll need to expose your local server:
+
+1. **Install ngrok**:
+```bash
+npm install -g ngrok
+```
+
+2. **Start ngrok**:
+```bash
+ngrok http 3000
+```
+
+3. **Use the ngrok URL** in your Wix app configuration:
+   - Widget: `https://your-ngrok-url.ngrok.io/wix/widget/dist/bundle.js`
+   - Settings: `https://your-ngrok-url.ngrok.io/wix/settings-panel/dist/index.html`
+
 ## Architecture
 
 - **Widget**: React-based custom element that displays a "Generate PDF" button

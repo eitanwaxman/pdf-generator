@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
 const PDF_FORMATS = ['A4', 'Letter', 'Legal', 'Tabloid', 'Ledger', 'A0', 'A1', 'A2', 'A3', 'A5', 'A6'];
-const PLATFORMS = [
-  { value: '', label: 'None' },
-  { value: 'wix', label: 'Wix' }
-];
 const FORM_FACTORS = [
   { value: 'desktop', label: 'Desktop' },
   { value: 'mobile', label: 'Mobile' }
@@ -24,7 +20,6 @@ const SettingsPanel = () => {
     pdfMarginRight: '50px',
     pdfMarginBottom: '50px',
     pdfMarginLeft: '50px',
-    platform: '',
     formFactor: 'desktop',
     outputType: 'pdf',
     screenshotType: 'png',
@@ -33,7 +28,6 @@ const SettingsPanel = () => {
     viewportWidth: '',
     viewportHeight: '',
     buttonText: 'Generate PDF',
-    backendUrl: '',
     dataParams: []
   });
 
@@ -85,16 +79,55 @@ const SettingsPanel = () => {
 
     // Prepare settings object
     const settingsToSave = {
-      ...settings,
+      urlSource: settings.urlSource,
+      customUrl: settings.customUrl,
+      pdfFormat: settings.pdfFormat,
+      pdfMarginTop: settings.pdfMarginTop,
+      pdfMarginRight: settings.pdfMarginRight,
+      pdfMarginBottom: settings.pdfMarginBottom,
+      pdfMarginLeft: settings.pdfMarginLeft,
+      formFactor: settings.formFactor,
+      outputType: settings.outputType,
+      screenshotType: settings.screenshotType,
+      screenshotQuality: settings.screenshotQuality,
+      screenshotFullPage: settings.screenshotFullPage,
+      viewportWidth: settings.viewportWidth,
+      viewportHeight: settings.viewportHeight,
+      buttonText: settings.buttonText,
       data: Object.keys(data).length > 0 ? data : undefined
     };
-    delete settingsToSave.dataParams;
 
-    // Send settings to parent widget via postMessage
-    window.parent.postMessage({
-      type: 'pdf-settings-update',
-      settings: settingsToSave
-    }, '*');
+    console.log('Saving settings:', settingsToSave);
+
+    // Send settings to parent window (widget and Wix editor)
+    // Send to all possible targets
+    try {
+      // Send to immediate parent
+      window.parent.postMessage({
+        type: 'pdf-settings-update',
+        settings: settingsToSave
+      }, '*');
+
+      // Send to top window (in case of nested iframes)
+      if (window.top !== window.parent) {
+        window.top.postMessage({
+          type: 'pdf-settings-update',
+          settings: settingsToSave
+        }, '*');
+      }
+
+      // Also broadcast to all frames
+      if (window.opener) {
+        window.opener.postMessage({
+          type: 'pdf-settings-update',
+          settings: settingsToSave
+        }, '*');
+      }
+
+      console.log('Settings broadcasted successfully');
+    } catch (error) {
+      console.error('Error broadcasting settings:', error);
+    }
 
     // Show success message
     alert('Settings saved successfully!');
@@ -320,25 +353,6 @@ const SettingsPanel = () => {
       )}
 
       <div className="settings-section">
-        <h3 className="settings-section-title">Platform</h3>
-        <select
-          value={settings.platform}
-          onChange={(e) => handleChange('platform', e.target.value)}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            fontSize: '14px'
-          }}
-        >
-          {PLATFORMS.map(platform => (
-            <option key={platform.value} value={platform.value}>{platform.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="settings-section">
         <h3 className="settings-section-title">Form Factor</h3>
         <select
           value={settings.formFactor}
@@ -460,26 +474,6 @@ const SettingsPanel = () => {
             fontSize: '14px'
           }}
         />
-      </div>
-
-      <div className="settings-section">
-        <h3 className="settings-section-title">Backend URL (Optional)</h3>
-        <input
-          type="text"
-          placeholder="https://your-server.com/wix/api/generate-pdf"
-          value={settings.backendUrl}
-          onChange={(e) => handleChange('backendUrl', e.target.value)}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            fontSize: '14px'
-          }}
-        />
-        <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-          Leave empty to use default backend URL
-        </p>
       </div>
 
       <div className="save-footer">

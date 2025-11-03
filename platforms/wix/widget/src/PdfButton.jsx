@@ -20,7 +20,7 @@ const PdfButton = ({ config }) => {
       const options = {
         outputType: config.outputType || 'pdf',
         responseType: 'buffer',
-        platform: config.platform,
+        platform: 'wix', // Always use wix platform
         formFactor: config.formFactor
       };
 
@@ -59,8 +59,8 @@ const PdfButton = ({ config }) => {
         options.data = config.data;
       }
 
-      // Get backend URL from config or use default
-      const backendUrl = config.backendUrl || `${window.location.origin}/wix/api/generate-pdf`;
+      // Use default backend URL
+      const backendUrl = `${window.location.origin}/wix/api/generate-pdf`;
 
       // Call backend API
       const response = await fetch(backendUrl, {

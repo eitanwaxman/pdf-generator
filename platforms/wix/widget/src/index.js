@@ -57,18 +57,36 @@ class PdfGeneratorButton extends HTMLElement {
 
   handleMessage(event) {
     // Handle settings updates from settings panel
+    // Accept messages from any origin for Wix compatibility
     if (event.data && event.data.type === 'pdf-settings-update') {
       const settings = event.data.settings;
       
+      console.log('Received settings update:', settings);
+      
       // Update attributes based on settings
       Object.keys(settings).forEach(key => {
+        const value = settings[key];
+        
+        // Convert camelCase to kebab-case for attributes
         const attrName = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-        if (typeof settings[key] === 'object' && settings[key] !== null) {
-          this.setAttribute(attrName, JSON.stringify(settings[key]));
-        } else if (settings[key] !== undefined && settings[key] !== null) {
-          this.setAttribute(attrName, settings[key]);
+        
+        // Handle different value types
+        if (value === undefined || value === null) {
+          // Skip undefined/null values
+          return;
+        } else if (typeof value === 'object') {
+          // JSON stringify objects
+          this.setAttribute(attrName, JSON.stringify(value));
+        } else if (typeof value === 'boolean') {
+          // Convert boolean to string
+          this.setAttribute(attrName, value.toString());
+        } else {
+          // Set as string
+          this.setAttribute(attrName, value.toString());
         }
       });
+      
+      console.log('Attributes updated, re-rendering...');
     }
   }
 
@@ -149,6 +167,11 @@ class PdfGeneratorButton extends HTMLElement {
   getStyles() {
     // Inline the CSS styles for shadow DOM
     return `
+      :host {
+        display: block;
+        width: fit-content;
+      }
+      
       .pdf-generator-button {
         display: inline-block;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
