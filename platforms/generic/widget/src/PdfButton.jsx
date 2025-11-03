@@ -11,15 +11,9 @@ const PdfButton = ({ config }) => {
     setSuccess(false);
 
     try {
-      // Get Wix access token for backend authentication
-      let accessToken = null;
-      if (config.wixClient) {
-        try {
-          accessToken = await config.wixClient.auth.getAccessToken();
-          console.log('Got Wix access token');
-        } catch (err) {
-          console.warn('Could not get Wix access token:', err);
-        }
+      // Validate public key
+      if (!config.publicKey) {
+        throw new Error('Public API key is required');
       }
 
       // Determine the URL to convert
@@ -31,8 +25,7 @@ const PdfButton = ({ config }) => {
       const options = {
         outputType: config.outputType || 'pdf',
         responseType: 'buffer',
-        platform: 'wix', // Always use wix platform
-        formFactor: config.formFactor
+        formFactor: config.formFactor || 'desktop'
       };
 
       // Add PDF-specific options
@@ -70,25 +63,19 @@ const PdfButton = ({ config }) => {
         options.data = config.data;
       }
 
-      // Use Docuskribe API endpoint
-      const backendUrl = 'https://www.docuskribe.com/wix/api/generate-pdf';
+      // Determine API endpoint
+      const apiUrl = config.apiUrl || window.location.origin;
+      const endpoint = `${apiUrl}/api/v1/jobs`;
       
-      console.log('Calling PDF API at:', backendUrl);
+      console.log('Calling Docuskribe API at:', endpoint);
 
-      // Prepare headers
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      
-      // Add Wix authorization header if we have an access token
-      if (accessToken) {
-        headers['Authorization'] = accessToken;
-      }
-
-      // Call backend API
-      const response = await fetch(backendUrl, {
+      // Call API with public key
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Public-Key': config.publicKey
+        },
         body: JSON.stringify({
           url: urlToConvert,
           options
@@ -102,38 +89,34 @@ const PdfButton = ({ config }) => {
 
       const result = await response.json();
 
-      // If job-based, poll for completion
+      // Poll for job completion
       if (result.jobId) {
-        const pdf = await pollForJobCompletion(backendUrl, result.jobId, accessToken);
-        await handlePdfResult(pdf);
-      } else if (result.pdf) {
-        // Direct PDF result
-        await handlePdfResult(result.pdf);
+        const output = await pollForJobCompletion(endpoint, result.jobId, config.publicKey);
+        await handleOutput(output, config.outputType);
       } else {
-        throw new Error('Invalid response from backend');
+        throw new Error('Invalid response from API');
       }
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
-      console.error('Error generating PDF:', err);
-      setError(err.message || 'Failed to generate PDF');
+      console.error('Error generating output:', err);
+      setError(err.message || 'Failed to generate output');
     } finally {
       setLoading(false);
     }
   };
 
-  const pollForJobCompletion = async (backendUrl, jobId, accessToken, maxAttempts = 60) => {
+  const pollForJobCompletion = async (baseUrl, jobId, publicKey, maxAttempts = 60) => {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
-      // Prepare headers with access token
-      const headers = {};
-      if (accessToken) {
-        headers['Authorization'] = accessToken;
-      }
-
-      const statusResponse = await fetch(`${backendUrl}/${jobId}`, { headers });
+      const statusResponse = await fetch(`${baseUrl}/${jobId}`, {
+        headers: {
+          'X-Public-Key': publicKey
+        }
+      });
+      
       if (!statusResponse.ok) {
         throw new Error('Failed to check job status');
       }
@@ -141,26 +124,39 @@ const PdfButton = ({ config }) => {
       const status = await statusResponse.json();
 
       if (status.status === 'completed') {
-        return status.result.pdf;
+        return status.result;
       } else if (status.status === 'failed') {
-        throw new Error(status.error || 'PDF generation failed');
+        throw new Error(status.error || 'Generation failed');
       }
       // Continue polling if still processing
     }
 
-    throw new Error('PDF generation timed out');
+    throw new Error('Generation timed out');
   };
 
-  const handlePdfResult = async (pdfBase64) => {
+  const handleOutput = async (result, outputType) => {
     try {
-      // Convert base64 to blob
-      const pdfBlob = base64ToBlob(pdfBase64, 'application/pdf');
+      let blob, filename;
+      
+      if (outputType === 'screenshot') {
+        // Handle screenshot
+        const screenshotBase64 = result.screenshot;
+        const imageType = result.type || 'png';
+        const contentType = `image/${imageType}`;
+        blob = base64ToBlob(screenshotBase64, contentType);
+        filename = `screenshot-${Date.now()}.${imageType}`;
+      } else {
+        // Handle PDF
+        const pdfBase64 = result.pdf;
+        blob = base64ToBlob(pdfBase64, 'application/pdf');
+        filename = `document-${Date.now()}.pdf`;
+      }
 
-      // Download PDF to user's device
-      downloadBlob(pdfBlob, `document-${Date.now()}.pdf`);
+      // Download file to user's device
+      downloadBlob(blob, filename);
     } catch (err) {
-      console.error('Error handling PDF:', err);
-      throw new Error('Failed to process PDF');
+      console.error('Error handling output:', err);
+      throw new Error('Failed to process output');
     }
   };
 
@@ -194,37 +190,40 @@ const PdfButton = ({ config }) => {
     URL.revokeObjectURL(url);
   };
 
+  const outputTypeLabel = config.outputType === 'screenshot' ? 'Screenshot' : 'PDF';
+  const buttonText = config.buttonText || `Generate ${outputTypeLabel}`;
+
   return (
-    <div className="pdf-generator-button">
+    <div className="docuskribe-widget">
       <button
-        className="pdf-btn"
+        className="docuskribe-btn"
         onClick={generatePdf}
         disabled={loading}
       >
         {loading ? (
           <>
-            <span className="pdf-btn-loading"></span>
+            <span className="docuskribe-spinner"></span>
             Generating...
           </>
         ) : (
           <>
-            <svg className="pdf-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <svg className="docuskribe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            {config.buttonText || 'Generate PDF'}
+            {buttonText}
           </>
         )}
       </button>
       
       {error && (
-        <div className="pdf-error">
+        <div className="docuskribe-error">
           {error}
         </div>
       )}
       
       {success && (
-        <div className="pdf-success">
-          PDF generated successfully!
+        <div className="docuskribe-success">
+          {outputTypeLabel} generated successfully!
         </div>
       )}
     </div>

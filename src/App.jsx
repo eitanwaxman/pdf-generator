@@ -5,6 +5,8 @@ import DashboardView from './components/DashboardView'
 import DocsView from './components/DocsView'
 import PlansView from './components/PlansView'
 import SettingsView from './components/SettingsView'
+import WidgetConfigView from './components/WidgetConfigView'
+import EmbedDocsView from './components/EmbedDocsView'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
 import { Button } from './components/ui/button'
 import { Alert, AlertDescription } from './components/ui/alert'
@@ -28,6 +30,8 @@ function App() {
       if (pathname.startsWith('/docs')) return 'docs'
       if (pathname.startsWith('/plans')) return 'plans'
       if (pathname.startsWith('/settings')) return 'settings'
+      if (pathname.startsWith('/widget')) return 'widget'
+      if (pathname.startsWith('/embed')) return 'embed'
       if (pathname.startsWith('/auth')) return 'auth'
       return 'landing'
     }
@@ -123,6 +127,8 @@ function App() {
           docs: '/docs',
           plans: '/plans',
           settings: '/settings',
+          widget: '/widget',
+          embed: '/embed',
         }
         const currentPath = tabToPath[activeTab] || '/'
         // Only preserve query params when staying on docs tab
@@ -223,15 +229,19 @@ function App() {
             <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to landing</Button>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="auth">Sign In</TabsTrigger>
               <TabsTrigger value="docs">API Docs</TabsTrigger>
+              <TabsTrigger value="embed">Widget</TabsTrigger>
             </TabsList>
             <TabsContent value="auth">
               <AuthView />
             </TabsContent>
             <TabsContent value="docs">
               <DocsView isLoggedIn={false} />
+            </TabsContent>
+            <TabsContent value="embed">
+              <EmbedDocsView onGetStarted={() => setActiveTab('auth')} />
             </TabsContent>
           </Tabs>
         </div>
@@ -279,9 +289,10 @@ function App() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="docs">API Docs</TabsTrigger>
+            <TabsTrigger value="widget">Widget</TabsTrigger>
             <TabsTrigger value="plans">
               Plans
               {profile?.tier === 'free' && (
@@ -299,6 +310,10 @@ function App() {
 
           <TabsContent value="docs">
             <DocsView apiKey={apiKey} isLoggedIn={true} />
+          </TabsContent>
+
+          <TabsContent value="widget">
+            <WidgetConfigView session={session} />
           </TabsContent>
 
           <TabsContent value="plans">

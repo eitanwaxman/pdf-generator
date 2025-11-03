@@ -96,7 +96,9 @@ router.post('/', async (req, res) => {
         // Enforce per-user active job concurrency limit
         const tier = req.account?.tier || 'free';
         const limit = tier === 'paid' ? CONCURRENCY.PAID_ACTIVE_MAX : CONCURRENCY.FREE_ACTIVE_MAX;
-        const activeCount = await getActiveCount(req.account.apiKey);
+        // Use apiKey for standard auth, or userId for public key auth
+        const trackingKey = req.account.apiKey || req.account.userId;
+        const activeCount = await getActiveCount(trackingKey);
         if (activeCount >= limit) {
             return res.status(429).json({
                 error: 'Too many concurrent jobs',

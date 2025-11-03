@@ -1,0 +1,7 @@
+/* This file is intentionally minimal as styles are inlined in the shadow DOM */
+/* Any global styles needed for the widget can be added here */
+
+* {
+  box-sizing: border-box;
+}
+

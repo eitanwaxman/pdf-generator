@@ -31,10 +31,18 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Get API key from Wix Secrets Manager
+    // Get Wix access token from Authorization header
+    const accessToken = req.headers.authorization;
+    if (!accessToken) {
+      return res.status(401).json({ 
+        error: 'Wix authorization token required' 
+      });
+    }
+
+    // Get API key from Wix Secrets Manager using the access token
     let apiKey;
     try {
-      apiKey = await getApiKey();
+      apiKey = await getApiKey(accessToken);
     } catch (error) {
       console.error('Failed to retrieve API key:', error);
       return res.status(500).json({ 
@@ -88,8 +96,16 @@ router.get('/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
 
-    // Get API key from Secrets Manager
-    const apiKey = await getApiKey();
+    // Get Wix access token from Authorization header
+    const accessToken = req.headers.authorization;
+    if (!accessToken) {
+      return res.status(401).json({ 
+        error: 'Wix authorization token required' 
+      });
+    }
+
+    // Get API key from Secrets Manager using the access token
+    const apiKey = await getApiKey(accessToken);
 
     // Determine the PDF API base URL
     const pdfApiUrl = process.env.PDF_API_URL || 'http://localhost:3000/api/v1';

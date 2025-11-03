@@ -5,12 +5,14 @@ const path = require('path');
 
 // Middleware
 const { authenticate } = require('./middleware/auth');
+const { authenticateFlexible } = require('./middleware/publicAuth');
 const { rateLimiter } = require('./middleware/rateLimiter');
 
 // Routes
 const jobsRouter = require('./routes/v1/jobs');
 const authRouter = require('./routes/v1/auth');
 const userRouter = require('./routes/v1/user');
+const publicKeysRouter = require('./routes/v1/public-keys');
 const billingRouter = require('./routes/internal/billing');
 const stripeWebhookRouter = require('./routes/webhooks/stripe');
 const wixPdfRouter = require('./platforms/wix/backend');
@@ -21,10 +23,10 @@ const worker = require('./workers/pdfWorker');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS configuration for dashboard
+// CORS configuration for dashboard and widgets
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, X-Public-Key');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     
     if (req.method === 'OPTIONS') {
@@ -50,6 +52,16 @@ app.use('/wix', express.static('platforms/wix'));
 app.use('/wix/widget/dist', express.static('platforms/wix/widget/dist'));
 app.use('/wix/settings-panel/dist', express.static('platforms/wix/settings-panel/dist'));
 
+// Serve generic widget CDN files with cache headers
+app.use('/cdn/widget', express.static('platforms/generic/widget/dist', {
+    maxAge: '1h',
+    etag: true,
+    setHeaders: (res, path) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+}));
+
 // Serve React app (production build)
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static('dist'));
@@ -69,7 +81,8 @@ if (process.env.NODE_ENV === 'production') {
 // API Routes
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/user', userRouter);
-app.use('/api/v1/jobs', authenticate, rateLimiter, jobsRouter);
+app.use('/api/v1/public-keys', publicKeysRouter);
+app.use('/api/v1/jobs', authenticateFlexible, rateLimiter, jobsRouter);
 
 // Internal Routes (server-only, requires service key)
 app.use('/internal/billing', billingRouter);
