@@ -21,6 +21,7 @@ router.use(cors({
  * Generate a PDF by calling the main PDF API with the API key from Secrets Manager
  */
 router.post('/', async (req, res) => {
+  console.log('Generating PDF: ', req);
   try {
     const { url, options } = req.body;
 
