@@ -34,16 +34,19 @@ class PdfGeneratorButton extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.config = {};
     
+    // Wix Application ID - replace with your actual App ID from Wix App Dashboard
+    const APP_ID = 'b715943d-8922-43a5-8728-c77c19d77879';
+    
     // Initialize Wix Client with Site host context and Site authentication
     this.wixClient = createClient({
-      host: site.host(),
+      host: site.host({ applicationId: APP_ID }),
       auth: site.auth()
     });
     
     // Provide function for Wix to inject access token
     this.setAccessToken = (token) => {
       this.wixClient = createClient({
-        host: site.host(),
+        host: site.host({ applicationId: APP_ID }),
         auth: site.auth({ accessToken: token })
       });
     };

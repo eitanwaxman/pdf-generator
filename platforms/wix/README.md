@@ -61,7 +61,20 @@ npm run build
 - Host `settings-panel/dist/` at a publicly accessible URL
 - Deploy backend service to your server
 
-### 4. Configure in Wix App Dashboard
+### 4. Configure Application ID
+
+**Important**: Before building, add your Wix App ID to the widget:
+
+1. Go to [Wix Custom Apps](https://manage.wix.com/account/custom-apps)
+2. Select your app
+3. Copy the **App ID** (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+4. Open `platforms/wix/widget/src/index.js`
+5. Replace the `APP_ID` constant with your actual App ID:
+   ```javascript
+   const APP_ID = 'your-app-id-here';
+   ```
+
+### 5. Configure in Wix App Dashboard
 
 1. Go to [Wix Custom Apps](https://manage.wix.com/account/custom-apps)
 2. Create new app or select existing app
@@ -72,7 +85,7 @@ npm run build
    - **Script URL**: `https://www.docuskribe.com/wix/widget/dist/bundle.js`
    - **Settings Panel URL**: `https://www.docuskribe.com/wix/settings-panel/dist/index.html`
 
-### 5. Configure Secrets (Site Owners)
+### 6. Configure Secrets (Site Owners)
 
 Site owners need to add their PDF API key to Wix Secrets Manager:
 1. Go to Wix Dashboard → Secrets Manager

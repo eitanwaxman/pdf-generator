@@ -49,16 +49,19 @@ class PdfGeneratorButton extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.config = {};
     
+    // Wix Application ID from your Wix App Dashboard
+    const APP_ID = 'b715943d-8922-43a5-8728-c77c19d77879';
+    
     // Initialize Wix Client with Site host context and Site authentication
     this.wixClient = createClient({
-      host: site.host(),
+      host: site.host({ applicationId: APP_ID }),
       auth: site.auth()
     });
     
     // Provide function for Wix to inject access token
     this.setAccessToken = (token) => {
       this.wixClient = createClient({
-        host: site.host(),
+        host: site.host({ applicationId: APP_ID }),
         auth: site.auth({ accessToken: token })
       });
     };
@@ -67,9 +70,15 @@ class PdfGeneratorButton extends HTMLElement {
 ```
 
 **Key Points**:
-- Creates a Wix Client using `site.host()` and `site.auth()`
+- **Application ID is required** - Get this from your Wix App Dashboard
+- Creates a Wix Client using `site.host({ applicationId })` and `site.auth()`
 - Provides `setAccessToken` method that Wix calls to inject the access token
 - Client is authenticated for the specific site instance
+
+**Where to find your App ID**:
+1. Go to [Wix App Dashboard](https://manage.wix.com/account/custom-apps)
+2. Select your app
+3. Look for "App ID" in the app details (format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
 
 ---
 
