@@ -43,6 +43,24 @@ function EndpointSection({
     bodyParams.forEach(p => initial[p.name] = p.default || '')
     return initial
   })
+
+  // Initialize params from URL query string on mount
+  useEffect(() => {
+    try {
+      const search = new URLSearchParams(window.location.search)
+      setParamValues(prev => {
+        const next = { ...prev }
+        Object.keys(next).forEach(key => {
+          if (search.has(key)) {
+            const raw = search.get(key)
+            next[key] = raw
+          }
+        })
+        return next
+      })
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   
   // Get current output type to show/hide options
   const currentOutputType = paramValues['options.outputType'] || 'pdf'
@@ -50,6 +68,25 @@ function EndpointSection({
   const updateParam = (name, value) => {
     setParamValues(prev => ({ ...prev, [name]: value }))
   }
+
+  // Reflect parameters in the URL so the page is shareable
+  useEffect(() => {
+    try {
+      const search = new URLSearchParams(window.location.search)
+      Object.entries(paramValues).forEach(([key, value]) => {
+        if (value === undefined || value === '' || value === null) {
+          search.delete(key)
+        } else {
+          search.set(key, String(value))
+        }
+      })
+      const newSearch = search.toString()
+      const target = `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`
+      if (window.location.pathname + window.location.search !== target) {
+        window.history.replaceState({}, '', target)
+      }
+    } catch {}
+  }, [paramValues])
   
   // Highlight code when language or parameters change
   useEffect(() => {

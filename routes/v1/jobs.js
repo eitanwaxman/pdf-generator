@@ -1,7 +1,7 @@
 const express = require('express');
 const { addPdfJob, pdfQueue } = require('../../queue/pdfQueue');
 const { validateJobOptions, isValidUrl } = require('../../config/validators');
-const { QUEUE, CONCURRENCY } = require('../../config/constants');
+const { QUEUE, CONCURRENCY, BYTES } = require('../../config/constants');
 const { createRedisConnection } = require('../../config/redis');
 const { supabase } = require('../../config/supabase');
 const { ensureCurrentBillingPeriod, checkCreditAvailability } = require('../../services/creditService');
@@ -20,6 +20,40 @@ let redisInitFailed = false;
         redisInitFailed = true;
     }
 })();
+
+// In-memory fallback for poll throttling when Redis is unavailable
+const pollThrottleMemory = new Map(); // key: `${apiKey}:${jobId}` -> number (last timestamp ms)
+const POLL_MIN_INTERVAL_MS = 5000; // 5 seconds
+
+async function checkPollThrottle(apiKey, jobId) {
+    const key = `poll_limit:${apiKey}:${jobId}`;
+
+    // Prefer Redis when available
+    if (redisConnection && !redisInitFailed) {
+        try {
+            // SET key 1 NX EX 5  -> allow only once per 5 seconds
+            const result = await redisConnection.set(key, '1', { NX: true, EX: Math.ceil(POLL_MIN_INTERVAL_MS / 1000) });
+            return result === 'OK';
+        } catch (e) {
+            // fall through to in-memory if Redis op fails
+        }
+    }
+
+    // In-memory fallback
+    const memKey = `${apiKey}:${jobId}`;
+    const lastTs = pollThrottleMemory.get(memKey) || 0;
+    const now = Date.now();
+    if (now - lastTs < POLL_MIN_INTERVAL_MS) {
+        return false;
+    }
+    pollThrottleMemory.set(memKey, now);
+    // best-effort cleanup to prevent unbounded growth
+    if (pollThrottleMemory.size > 5000) {
+        const firstKey = pollThrottleMemory.keys().next().value;
+        if (firstKey) pollThrottleMemory.delete(firstKey);
+    }
+    return true;
+}
 
 async function getActiveCount(apiKey) {
     if (!redisConnection || redisInitFailed) return 0;
@@ -231,6 +265,14 @@ router.get('/:jobId', async (req, res) => {
     const { jobId } = req.params;
 
     try {
+        // Enforce max 1 poll per 5 seconds per API key per job
+        const allowed = await checkPollThrottle(req.account.apiKey, jobId);
+        if (!allowed) {
+            return res.status(429).json({
+                error: 'Too many status checks. Please poll at most once every 5 seconds.'
+            });
+        }
+
         const job = await pdfQueue.getJob(jobId);
 
         if (!job) {
@@ -347,8 +389,7 @@ router.get('/:jobId', async (req, res) => {
             const result = returnValue;
             // augment result with size if present
             const sizeBytes = result && typeof result.sizeBytes === 'number' ? result.sizeBytes : undefined;
-            const MB = 1024 * 1024; // 1MB in bytes
-            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes / MB).toFixed(2)) : undefined);
+            const sizeMB = result && typeof result.sizeMB === 'number' ? result.sizeMB : (sizeBytes ? Number((sizeBytes / BYTES.MB).toFixed(2)) : undefined);
             return res.json({ 
                 status: 'completed', 
                 result,

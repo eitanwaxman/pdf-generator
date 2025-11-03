@@ -1,6 +1,45 @@
 const crypto = require('crypto');
 const { supabase } = require('../config/supabase');
 
+// In-memory cache for API key validations
+// Key: apiKey (trimmed)
+// Value: { account: AccountObject|null, expiresAt: number }
+const validationCache = new Map();
+const CACHE_ENABLED = (process.env.API_KEY_CACHE_ENABLED || 'true').toLowerCase() === 'true';
+const CACHE_TTL_SUCCESS = Number(process.env.API_KEY_CACHE_TTL || 45000); // 45s default
+const CACHE_TTL_FAILURE = 10000; // 10s for negative cache
+const MAX_CACHE_SIZE = Number(process.env.API_KEY_CACHE_MAX_SIZE || 1000);
+
+function getCachedValidation(trimmedKey) {
+    if (!CACHE_ENABLED) return undefined;
+    const entry = validationCache.get(trimmedKey);
+    if (!entry) return undefined;
+    if (Date.now() >= entry.expiresAt) {
+        validationCache.delete(trimmedKey);
+        return undefined;
+    }
+    return entry.account; // can be null for negative cache
+}
+
+function setCachedValidation(trimmedKey, account, ttlMs) {
+    if (!CACHE_ENABLED) return;
+    // Simple size control: drop oldest entry when exceeding max size
+    if (validationCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = validationCache.keys().next().value;
+        if (firstKey) validationCache.delete(firstKey);
+    }
+    validationCache.set(trimmedKey, {
+        account,
+        expiresAt: Date.now() + ttlMs
+    });
+}
+
+function invalidateCacheForApiKey(apiKey) {
+    if (!apiKey) return;
+    const trimmedKey = apiKey.trim();
+    validationCache.delete(trimmedKey);
+}
+
 /**
  * Generate a secure random API key with prefix
  * Format: pdf_live_<random_hex>
@@ -62,6 +101,13 @@ const validateApiKey = async (apiKey) => {
         // Trim whitespace from API key
         const trimmedKey = apiKey.trim();
 
+        // Check cache first
+        const cached = getCachedValidation(trimmedKey);
+        if (cached !== undefined) {
+            // cached can be null (negative cache) or account object
+            return cached;
+        }
+
         // Query API key first
         const { data: keyData, error: keyError } = await supabase
             .from('api_keys')
@@ -81,6 +127,8 @@ const validateApiKey = async (apiKey) => {
                     hint: keyError?.hint
                 });
             }
+            // Negative cache to avoid DB hammering
+            setCachedValidation(trimmedKey, null, CACHE_TTL_FAILURE);
             return null;
         }
 
@@ -113,12 +161,17 @@ const validateApiKey = async (apiKey) => {
             console.error('validateApiKey: Error fetching user data:', userError);
         }
         
-        return {
+        const account = {
             userId: keyData.user_id,
             tier: profileData?.tier || 'free',
             name: userData?.user?.email || 'Unknown User',
             apiKey: keyData.key
         };
+
+        // Cache successful validation
+        setCachedValidation(trimmedKey, account, CACHE_TTL_SUCCESS);
+
+        return account;
     } catch (error) {
         console.error('validateApiKey: Unexpected error:', error);
         return null;
@@ -145,6 +198,10 @@ const rotateApiKey = async (userId) => {
         
         // Create new API key
         const newKey = await createApiKeyForUser(userId, 'Default API Key');
+        // Best-effort: clear any cached entries that might reference the old key
+        // (We don't know the old key here; a coarse approach is acceptable due to short TTLs.)
+        // Optional: clear whole cache when rotating to avoid stale entries
+        validationCache.clear();
         
         return newKey;
     } catch (error) {

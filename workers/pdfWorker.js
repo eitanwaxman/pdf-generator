@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { createBullMQConnection } = require('../config/redis');
 const { generateOutput } = require('../services/outputService');
 const { isValidUrl } = require('../config/validators');
-const { RESPONSE_TYPES, RESULT_TYPES, WORKER_CONCURRENCY } = require('../config/constants');
+const { RESPONSE_TYPES, RESULT_TYPES, WORKER_CONCURRENCY, TIME, BYTES } = require('../config/constants');
 const fs = require('fs');
 
 const connection = createBullMQConnection();
@@ -46,30 +46,31 @@ const worker = new Worker(
 
             console.log(`[Worker] Starting generation for job ${job.id} (attempt ${attemptsMade + 1})`);
 
-            // Enforce hard 60s timeout for generation
-            const HARD_TIMEOUT_MS = 60 * 1000;
+            // Enforce hard timeout for generation with immediate abort
+            const controller = new AbortController();
             const timeoutPromise = new Promise((_, reject) => {
                 const t = setTimeout(() => {
                     clearTimeout(t);
-                    reject(new Error('Generation exceeded 60 seconds timeout'));
-                }, HARD_TIMEOUT_MS);
+                    try { controller.abort(); } catch (e) {}
+                    reject(new Error(`Generation exceeded ${TIME.GENERATION_TIMEOUT_MS / 1000} seconds timeout`));
+                }, TIME.GENERATION_TIMEOUT_MS);
             });
 
             // Generate output (PDF or screenshot) with timeout race
             const generationPromise = generateOutput({
                 url,
                 options,
-                account
+                account,
+                signal: controller.signal
             });
 
             const { buffer, fileUrl, outputType } = await Promise.race([generationPromise, timeoutPromise]);
             
-            console.log(`[Worker] Generation completed for job ${job.id} (attempt ${attemptsMade + 1}): ${outputType}, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`[Worker] Generation completed for job ${job.id} (attempt ${attemptsMade + 1}): ${outputType}, size: ${(buffer.length / BYTES.MB).toFixed(2)}MB`);
 
             // Calculate size for response
-            const MB = 1024 * 1024; // 1MB in bytes
             const sizeBytes = buffer.length;
-            const sizeMB = Number((sizeBytes / MB).toFixed(2));
+            const sizeMB = Number((sizeBytes / BYTES.MB).toFixed(2));
 
             // Store result based on response type
             const responseType = options.responseType || RESPONSE_TYPES.BUFFER;

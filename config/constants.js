@@ -88,13 +88,43 @@ const DEFAULT_SCREENSHOT_OPTIONS = {
     }
 };
 
+// Viewport Constants
+const VIEWPORT = {
+    DESKTOP: {
+        width: 800,
+        height: 600
+    },
+    MOBILE: {
+        width: 390,
+        height: 844,
+        deviceScaleFactor: 2
+    }
+};
+
+// Scrolling Constants
+const SCROLL = {
+    DEFAULT_INCREMENT: 200 // Pixels to scroll at a time
+};
+
+// Redis Retry Constants
+const REDIS_RETRY = {
+    MAX_RETRIES: 10,
+    BACKOFF_MULTIPLIER: 100, // milliseconds
+    MAX_BACKOFF_MS: 2000 // milliseconds
+};
+
+// Byte Conversion Constants
+const BYTES = {
+    MB: 1024 * 1024 // 1 MB in bytes
+};
+
 // Time Constants (in milliseconds)
 const TIME = {
-    IFRAME_TIMEOUT: 60000,
     TEMP_FILE_TTL: 60000,
     PAGE_NAVIGATION_TIMEOUT: 0,
     NETWORK_IDLE_TIME: 500,
-    NETWORK_IDLE_TIMEOUT: 3000
+    NETWORK_IDLE_TIMEOUT: 3000,
+    GENERATION_TIMEOUT_MS: 120 * 1000 // 120 seconds hard timeout for PDF generation
 };
 
 // Priority Constants (higher = sooner)
@@ -208,6 +238,10 @@ module.exports = {
     PAGE_LIMITS,
     WORKER_CONCURRENCY,
     CONCURRENCY,
-    MAX_MONTHLY_CREDITS
+    MAX_MONTHLY_CREDITS,
+    VIEWPORT,
+    SCROLL,
+    REDIS_RETRY,
+    BYTES
 };
 

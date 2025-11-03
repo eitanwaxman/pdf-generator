@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './lib/supabase'
 import AuthView from './components/AuthView'
 import DashboardView from './components/DashboardView'
@@ -19,8 +19,28 @@ function App() {
   const [profile, setProfile] = useState(null)
   const [apiKey, setApiKey] = useState(null)
   const [checkoutStatus, setCheckoutStatus] = useState(null)
+  const hasInitialSessionRef = useRef(false)
 
   useEffect(() => {
+    // Initialize tab from path, then fallback to localStorage
+    const pathToTab = (pathname) => {
+      if (pathname.startsWith('/dashboard')) return 'dashboard'
+      if (pathname.startsWith('/docs')) return 'docs'
+      if (pathname.startsWith('/plans')) return 'plans'
+      if (pathname.startsWith('/settings')) return 'settings'
+      if (pathname.startsWith('/auth')) return 'auth'
+      return 'landing'
+    }
+    const initialTabFromPath = pathToTab(window.location.pathname)
+    if (initialTabFromPath) {
+      setActiveTab(initialTabFromPath)
+    } else {
+      try {
+        const savedTab = localStorage.getItem('activeTab')
+        if (savedTab) setActiveTab(savedTab)
+      } catch {}
+    }
+
     // Check for checkout status in URL
     const params = new URLSearchParams(window.location.search)
     const checkout = params.get('checkout')
@@ -30,7 +50,7 @@ function App() {
       setCheckoutStatus('success')
       setActiveTab('settings')
       // Clean URL
-      window.history.replaceState({}, '', '/')
+      window.history.replaceState({}, '', window.location.pathname)
       
       // Auto-dismiss after 10 seconds
       setTimeout(() => setCheckoutStatus(null), 10000)
@@ -38,18 +58,18 @@ function App() {
       setCheckoutStatus('canceled')
       setActiveTab('plans')
       // Clean URL
-      window.history.replaceState({}, '', '/')
+      window.history.replaceState({}, '', window.location.pathname)
       
       // Auto-dismiss after 5 seconds
       setTimeout(() => setCheckoutStatus(null), 5000)
     }
     
-    // Check for existing session
+    // Check for existing session (do not force tab; preserve restored tab)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
       if (session) {
-        setActiveTab('dashboard')
+        hasInitialSessionRef.current = true
         loadUserData(session)
       }
     })
@@ -57,16 +77,65 @@ function App() {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change event:', event, 'Session exists:', !!session)
       setSession(session)
-      if (session) {
+      
+      // Only redirect to dashboard on an actual sign-in (not token refresh, not initial session)
+      if (session && event === 'SIGNED_IN' && !hasInitialSessionRef.current) {
         setActiveTab('dashboard')
+        // Reflect in URL
+        try {
+          window.history.pushState({}, '', '/dashboard')
+        } catch {}
         loadUserData(session)
+      }
+      
+      // Mark that we've seen this session
+      if (session) {
+        hasInitialSessionRef.current = true
       }
     })
 
-    return () => subscription.unsubscribe()
+    // Sync tab when user navigates with back/forward
+    const onPopState = () => {
+      const tabFromPath = pathToTab(window.location.pathname)
+      setActiveTab(tabFromPath)
+    }
+    window.addEventListener('popstate', onPopState)
+
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('popstate', onPopState)
+    }
   }, [])
+
+  // Persist active tab whenever it changes
+  useEffect(() => {
+    try {
+      if (activeTab) {
+        localStorage.setItem('activeTab', activeTab)
+        // Reflect active tab in the URL path
+        const tabToPath = {
+          landing: '/',
+          auth: '/auth',
+          dashboard: '/dashboard',
+          docs: '/docs',
+          plans: '/plans',
+          settings: '/settings',
+        }
+        const currentPath = tabToPath[activeTab] || '/'
+        // Only preserve query params when staying on docs tab
+        const search = (activeTab === 'docs' && window.location.pathname === '/docs') 
+          ? window.location.search 
+          : ''
+        const target = `${currentPath}${search}`
+        if (window.location.pathname + window.location.search !== target) {
+          window.history.pushState({}, '', target)
+        }
+      }
+    } catch {}
+  }, [activeTab])
 
   const loadUserData = async (session, retryCount = 0) => {
     try {

@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const browserPool = require('./browserPool');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -10,12 +11,14 @@ const {
     WATERMARK, 
     PLATFORMS, 
     PAGE_LIMITS,
-    PDF_FULL_HEIGHTS
+    PDF_FULL_HEIGHTS,
+    VIEWPORT,
+    SCROLL
 } = require('../config/constants');
 
 const SERVER_URL = process.env.SERVER_URL || "http://localhost:3000";
 
-let browser;
+let browser; // deprecated singleton (kept for backward compatibility in case referenced elsewhere)
 
 /**
  * Remove Wix ads from the page
@@ -67,24 +70,9 @@ function addWatermark(watermarkConfig) {
  * @returns {Promise<Browser>} Puppeteer browser instance
  */
 async function getBrowser() {
+    // Maintained for compatibility; prefer browserPool.acquirePage() in new code
     if (!browser) {
-        console.log('[Puppeteer] Launching browser (cold start)...');
-        const startTime = Date.now();
-        try {
-            browser = await puppeteer.launch({ headless: 'new' });
-            const launchTime = Date.now() - startTime;
-            console.log(`[Puppeteer] Browser launched successfully in ${launchTime}ms`);
-            process.on('exit', async () => {
-                if (browser) {
-                    await browser.close();
-                }
-            });
-        } catch (error) {
-            console.error('[Puppeteer] Failed to launch browser:', error.message);
-            throw error;
-        }
-    } else {
-        console.log('[Puppeteer] Reusing existing browser instance');
+        browser = await puppeteer.launch({ headless: 'new' });
     }
     return browser;
 }
@@ -137,7 +125,7 @@ function calculateUsablePageHeight(format, margin) {
  * @param {number} maxHeight - Maximum height to scroll to (for page limiting)
  * @returns {Promise<void>}
  */
-async function scrollPageProgressively(page, scrollIncrement = 200, maxHeight = null) {
+async function scrollPageProgressively(page, scrollIncrement = SCROLL.DEFAULT_INCREMENT, maxHeight = null) {
     const scrollHeight = await page.evaluate(() => document.body.scrollHeight);
     let currentScrollPosition = 0;
     
@@ -207,16 +195,30 @@ function storeTemporaryFile(buffer, extension) {
  * @param {object} params
  * @returns {Promise<Page>} Configured Puppeteer page ready for output generation
  */
-async function preparePageForOutput({ url, account, platform, viewport = null, formFactor = 'desktop', maxScrollHeight = null }) {
-    const browser = await getBrowser();
-    
-    console.log('[Puppeteer] Creating new page...');
+async function preparePageForOutput({ url, account, platform, viewport = null, formFactor = 'desktop', maxScrollHeight = null, abortSignal = null }) {
+    console.log('[Puppeteer] Acquiring page from browser pool...');
     const pageStartTime = Date.now();
-    const page = await browser.newPage();
+    const page = await browserPool.acquirePage();
     const pageTime = Date.now() - pageStartTime;
-    console.log(`[Puppeteer] New page created in ${pageTime}ms`);
+    console.log(`[Puppeteer] Page acquired in ${pageTime}ms`);
 
     try {
+        // Immediate cancellation support: close and release the page if aborted
+        let abortHandler = null;
+        if (abortSignal) {
+            if (abortSignal.aborted) {
+                try { await page.close(); } catch (e) {}
+                try { await browserPool.releasePage(page); } catch (e) {}
+                throw new Error('Operation aborted');
+            }
+            abortHandler = async () => {
+                try { await page.close(); } catch (e) {}
+                try { await browserPool.releasePage(page); } catch (e) {}
+            };
+            // Ensure the handler runs only once
+            abortSignal.addEventListener('abort', abortHandler, { once: true });
+        }
+
         // Handle viewport and formFactor
         let finalViewport;
         
@@ -227,9 +229,9 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
             if (formFactor === 'mobile') {
                 // Merge mobile-specific properties, but allow explicit viewport to override dimensions
                 finalViewport = {
-                    width: viewport.width || 390,
-                    height: viewport.height || 844,
-                    deviceScaleFactor: viewport.deviceScaleFactor ?? 2,
+                    width: viewport.width || VIEWPORT.MOBILE.width,
+                    height: viewport.height || VIEWPORT.MOBILE.height,
+                    deviceScaleFactor: viewport.deviceScaleFactor ?? VIEWPORT.MOBILE.deviceScaleFactor,
                     isMobile: viewport.isMobile ?? true,
                     hasTouch: viewport.hasTouch ?? true,
                     isLandscape: viewport.isLandscape ?? false
@@ -238,18 +240,18 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
         } else if (formFactor === 'mobile') {
             // Default mobile viewport settings
             finalViewport = {
-                width: 390,
-                height: 844,
-                deviceScaleFactor: 2,
+                width: VIEWPORT.MOBILE.width,
+                height: VIEWPORT.MOBILE.height,
+                deviceScaleFactor: VIEWPORT.MOBILE.deviceScaleFactor,
                 isMobile: true,
                 hasTouch: true,
                 isLandscape: false
             };
         } else {
-            // Default desktop viewport (800x600)
+            // Default desktop viewport
             finalViewport = {
-                width: 800,
-                height: 600
+                width: VIEWPORT.DESKTOP.width,
+                height: VIEWPORT.DESKTOP.height
             };
         }
         
@@ -281,7 +283,7 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
         // Scroll to load lazy content
         console.log('[Puppeteer] Starting progressive scroll...');
         const scrollStartTime = Date.now();
-        await scrollPageProgressively(page, 200, maxScrollHeight);
+        await scrollPageProgressively(page, SCROLL.DEFAULT_INCREMENT, maxScrollHeight);
         const scrollTime = Date.now() - scrollStartTime;
         console.log(`[Puppeteer] Progressive scroll completed in ${scrollTime}ms`);
 
@@ -306,6 +308,9 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
         try {
             await page.close();
         } catch (e) {}
+        try {
+            await browserPool.releasePage(page);
+        } catch (e) {}
         throw error;
     }
 }
@@ -318,7 +323,7 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
  * @param {object} params.account - Account information (tier: 'free' | 'paid')
  * @returns {object} - { buffer, fileUrl, outputType }
  */
-async function generatePdf({ url, pdfOptions = {}, account }) {
+async function generatePdf({ url, pdfOptions = {}, account, abortSignal = null }) {
     const { margin, format, platform, viewport, formFactor = 'desktop' } = pdfOptions;
     const pdfFormat = format || PDF_FORMATS.A4;
     const actualMargin = margin || DEFAULT_MARGIN;
@@ -336,9 +341,10 @@ async function generatePdf({ url, pdfOptions = {}, account }) {
             url,
             account,
             platform,
-            viewport: viewport || null, // Pass viewport if provided, default is 800x600
+            viewport: viewport || null, // Pass viewport if provided, defaults to configured viewport
             formFactor,
-            maxScrollHeight: maxHeight
+            maxScrollHeight: maxHeight,
+            abortSignal
         });
 
         // Generate PDF (the only PDF-specific code!)
@@ -355,6 +361,9 @@ async function generatePdf({ url, pdfOptions = {}, account }) {
         const fileUrl = storeTemporaryFile(pdfBuffer, 'pdf');
 
         await page.close();
+        try {
+            await browserPool.releasePage(page);
+        } catch (e) {}
 
         return { buffer: pdfBuffer, fileUrl, outputType: 'pdf' };
     } catch (error) {
@@ -372,9 +381,8 @@ async function generatePdf({ url, pdfOptions = {}, account }) {
         throw new Error(`Failed to generate PDF for ${url}: ${error.message}`);
     } finally {
         if (page) {
-            try {
-                await page.close();
-            } catch (e) {}
+            try { await page.close(); } catch (e) {}
+            try { await browserPool.releasePage(page); } catch (e) {}
         }
     }
 }
@@ -387,7 +395,7 @@ async function generatePdf({ url, pdfOptions = {}, account }) {
  * @param {object} params.account - Account information (tier: 'free' | 'paid')
  * @returns {object} - { buffer, fileUrl, outputType }
  */
-async function generateScreenshot({ url, screenshotOptions = {}, account }) {
+async function generateScreenshot({ url, screenshotOptions = {}, account, abortSignal = null }) {
     const {
         type = DEFAULT_SCREENSHOT_OPTIONS.type,
         quality = DEFAULT_SCREENSHOT_OPTIONS.quality,
@@ -406,7 +414,8 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
             platform,
             viewport,
             formFactor,
-            maxScrollHeight: null // Screenshots capture full page if fullPage is true
+            maxScrollHeight: null, // Screenshots capture full page if fullPage is true
+            abortSignal
         });
 
         // Generate screenshot (the only screenshot-specific code!)
@@ -429,6 +438,9 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
         const fileUrl = storeTemporaryFile(screenshotBuffer, type);
 
         await page.close();
+        try {
+            await browserPool.releasePage(page);
+        } catch (e) {}
 
         return { buffer: screenshotBuffer, fileUrl, outputType: 'screenshot' };
     } catch (error) {
@@ -446,9 +458,8 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
         throw new Error(`Failed to generate screenshot for ${url}: ${error.message}`);
     } finally {
         if (page) {
-            try {
-                await page.close();
-            } catch (e) {}
+            try { await page.close(); } catch (e) {}
+            try { await browserPool.releasePage(page); } catch (e) {}
         }
     }
 }
@@ -461,7 +472,7 @@ async function generateScreenshot({ url, screenshotOptions = {}, account }) {
  * @param {object} params.account - Account information
  * @returns {object} - { buffer, fileUrl, outputType }
  */
-async function generateOutput({ url, options = {}, account }) {
+async function generateOutput({ url, options = {}, account, signal = null }) {
     const outputType = options.outputType || 'pdf'; // Default to PDF for backward compatibility
     const platform = options.platform; // Extract shared platform option
     const formFactor = options.formFactor || 'desktop'; // Extract formFactor option, default to desktop
@@ -491,7 +502,8 @@ async function generateOutput({ url, options = {}, account }) {
                 platform,  // Pass platform explicitly to nested options
                 formFactor  // Pass formFactor explicitly to nested options
             }, 
-            account 
+            account,
+            abortSignal: signal
         });
     } else {
         return await generatePdf({ 
@@ -501,7 +513,8 @@ async function generateOutput({ url, options = {}, account }) {
                 platform,  // Pass platform explicitly to nested options
                 formFactor  // Pass formFactor explicitly to nested options
             },
-            account 
+            account,
+            abortSignal: signal
         });
     }
 }
