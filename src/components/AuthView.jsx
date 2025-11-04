@@ -58,14 +58,19 @@ export default function AuthView() {
 
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: loginEmail,
-        options: {
-          emailRedirectTo: window.location.origin,
+      const response = await fetch('/api/v1/auth/magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ email: loginEmail }),
       })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send magic link')
+      }
 
       setMessage('Magic link sent! Check your email to login.')
     } catch (err) {

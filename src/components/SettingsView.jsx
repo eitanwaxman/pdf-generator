@@ -277,7 +277,7 @@ export default function SettingsView({ session, profile, emailVerified, onAccoun
                   disabled={loading}
                   onCheckedChange={async (next) => {
                     if (next && !overageEnabled) {
-                      const price = profile?.tier === 'pro' ? '0.005' : '0.009'
+                      const price = profile?.tier === 'pro' ? '0.030' : '0.035'
                       const confirmed = confirm(`Enable overage? You may be charged ${price} USD per credit for usage beyond your monthly limit. You can turn this off anytime.`)
                       if (!confirmed) return
                     }
@@ -295,7 +295,7 @@ export default function SettingsView({ session, profile, emailVerified, onAccoun
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Overage credits {overageEnabled ? 'are' : 'will be'} charged at ${profile?.tier === 'pro' ? '0.005' : '0.009'} per credit. Billed monthly.
+                Overage credits {overageEnabled ? 'are' : 'will be'} charged at ${profile?.tier === 'pro' ? '0.030' : '0.035'} per credit. Billed monthly.
               </AlertDescription>
             </Alert>
             

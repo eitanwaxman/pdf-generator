@@ -218,11 +218,11 @@ export default function PlansView({ session, profile, onSubscriptionFound }) {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Starter overage:</span>
-              <span className="font-medium">$0.009 per credit</span>
+              <span className="font-medium">$0.035 per credit</span>
             </div>
             <div className="flex justify-between">
               <span>Pro overage:</span>
-              <span className="font-medium">$0.005 per credit</span>
+              <span className="font-medium">$0.030 per credit</span>
             </div>
             <p className="text-muted-foreground text-xs mt-4">
               Overage charges are billed at the end of each month. You can toggle overage on/off in Settings.
