@@ -37,7 +37,10 @@ router.post('/register', async (req, res) => {
         const userId = authData.user.id;
         
         // Generate confirmation link with correct redirect URL and send confirmation email
-        const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        // Remove trailing slash if present to avoid redirect issues
+        const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+        
+        console.log('Registration - Using APP_URL:', appUrl); // Debug log
         
         // Generate confirmation link with correct redirect URL
         // This will trigger Supabase to send the confirmation email with the correct redirect URL
@@ -153,10 +156,15 @@ router.post('/magic-link', async (req, res) => {
     }
     
     try {
+        // Remove trailing slash if present to avoid redirect issues
+        const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+        
+        console.log('Magic link - Using APP_URL:', appUrl); // Debug log
+        
         const { error } = await supabase.auth.signInWithOtp({
             email,
             options: {
-                emailRedirectTo: process.env.APP_URL || 'http://localhost:3000'
+                emailRedirectTo: appUrl
             }
         });
         
@@ -166,7 +174,8 @@ router.post('/magic-link', async (req, res) => {
         }
         
         res.json({ 
-            message: 'Magic link sent! Please check your email.'
+            message: 'Magic link sent! Please check your email.',
+            debug: { redirectUrl: appUrl } // Include for debugging
         });
     } catch (error) {
         console.error('Error in magic link:', error);
