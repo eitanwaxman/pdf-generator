@@ -36,6 +36,35 @@ router.post('/register', async (req, res) => {
         
         const userId = authData.user.id;
         
+        // Generate confirmation link with correct redirect URL and send confirmation email
+        const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        
+        // Generate confirmation link with correct redirect URL
+        // This will trigger Supabase to send the confirmation email with the correct redirect URL
+        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+            type: 'signup',
+            email: email,
+            options: {
+                redirectTo: appUrl
+            }
+        });
+        
+        if (linkError) {
+            console.error('Error generating confirmation link:', linkError);
+            // Continue with registration even if email link generation fails
+        }
+        
+        // Resend confirmation email to ensure it's sent with the correct redirect URL
+        const { error: resendError } = await supabase.auth.admin.resend({
+            type: 'signup',
+            email: email
+        });
+        
+        if (resendError) {
+            console.error('Error sending confirmation email:', resendError);
+            // Continue with registration even if email sending fails
+        }
+        
         // Create user profile with default tier
         const { error: profileError } = await supabase
             .from('user_profiles')

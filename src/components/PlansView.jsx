@@ -7,10 +7,13 @@ const PLANS = {
   free: {
     name: 'Free',
     price: 0,
-    credits: 100,
+    credits: 50,
     features: [
       'All API features',
-      '100 credits per month',
+      '50 credits per month',
+      'Up to 1 page per PDF',
+      '5 requests per minute',
+      '1 concurrent job',
       'Watermarked PDFs',
       'Email support',
       'Full documentation'
@@ -28,10 +31,13 @@ const PLANS = {
   starter: {
     name: 'Starter',
     price: 9,
-    credits: 1000,
+    credits: 300,
     features: [
       'All API features',
-      '1,000 credits per month',
+      '300 credits per month',
+      'Up to 3 pages per PDF',
+      '10 requests per minute',
+      '3 concurrent jobs',
       'No watermark',
       'Priority email support',
       'Optional overage',
@@ -50,10 +56,13 @@ const PLANS = {
   pro: {
     name: 'Pro',
     price: 25,
-    credits: 5000,
+    credits: 1000,
     features: [
       'All API features',
-      '5,000 credits per month',
+      '1,000 credits per month',
+      'Up to 5 pages per PDF',
+      '15 requests per minute',
+      '7 concurrent jobs',
       'No watermark',
       'Priority support',
       'Optional overage',
