@@ -64,8 +64,8 @@ function App() {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname)
       
-      // Auto-dismiss after 5 seconds
-      setTimeout(() => setCheckoutStatus(null), 5000)
+      // Auto-dismiss after 15 seconds (longer to give user time to read benefits)
+      setTimeout(() => setCheckoutStatus(null), 15000)
     }
     
     // Check for existing session (do not force tab; preserve restored tab)
@@ -280,10 +280,43 @@ function App() {
         )}
         
         {checkoutStatus === 'canceled' && (
-          <Alert variant="destructive" className="mb-6">
-            <XCircle className="h-4 w-4" />
-            <AlertDescription>
-              Payment was canceled. You can try again when you're ready.
+          <Alert className="mb-6 bg-amber-50 border-amber-200">
+            <XCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-900">
+              <div className="space-y-3">
+                <div>
+                  <strong>Checkout Canceled</strong> – No worries! Your account is still active on the Free plan.
+                </div>
+                <div className="text-sm">
+                  <p className="font-medium mb-2">You're missing out on:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Up to 1,000 credits per month</li>
+                    <li>No watermarks on PDFs</li>
+                    <li>Higher rate limits & concurrent jobs</li>
+                    <li>Priority support & faster processing</li>
+                  </ul>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    size="sm" 
+                    onClick={() => setCheckoutStatus(null)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    Try Again
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      setCheckoutStatus(null)
+                      setActiveTab('dashboard')
+                    }}
+                    className="border-amber-600 text-amber-700 hover:bg-amber-50"
+                  >
+                    Maybe Later
+                  </Button>
+                </div>
+              </div>
             </AlertDescription>
           </Alert>
         )}

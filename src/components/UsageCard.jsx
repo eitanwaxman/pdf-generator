@@ -24,7 +24,7 @@ export default function UsageCard({ profile }) {
   }
   
   // Calculate estimated overage cost
-  const overageCostPerCredit = tier === 'pro' ? 0.030 : tier === 'starter' ? 0.035 : 0
+  const overageCostPerCredit = tier === 'pro' ? 0.030 : tier === 'starter' ? 0.05 : 0
   const estimatedOverageCost = overageAmount * overageCostPerCredit
   
   // Determine progress bar color based on usage

@@ -218,7 +218,7 @@ export default function PlansView({ session, profile, onSubscriptionFound }) {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>Starter overage:</span>
-              <span className="font-medium">$0.035 per credit</span>
+              <span className="font-medium">$0.05 per credit</span>
             </div>
             <div className="flex justify-between">
               <span>Pro overage:</span>

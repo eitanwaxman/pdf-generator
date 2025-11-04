@@ -272,7 +272,7 @@ async function handleSubscriptionDeleted(subscription) {
         .from('user_profiles')
         .update({
             tier: 'free',
-            monthly_credits: 100,
+            monthly_credits: 50,
             subscription_status: 'canceled',
             stripe_subscription_id: null,
             stripe_price_id: null,

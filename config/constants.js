@@ -169,8 +169,8 @@ const WATERMARK = {
     OPACITY: '0.7',
     MARGIN_TOP: '20px',
     Z_INDEX: '1000',
-    URL: 'https://thewixwiz.com/wix-apps',
-    TEXT: 'Generated using Docuskribe by The Wix Wiz. Visit thewixwiz.com/wix-apps to learn more'
+    URL: 'https://www.docuskribe.com',
+    TEXT: 'Generated using Docuskribe. Visit docuskribe.com to learn more'
 };
 
 // Default PDF Margin

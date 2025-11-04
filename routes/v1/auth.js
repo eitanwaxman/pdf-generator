@@ -74,6 +74,10 @@ router.post('/register', async (req, res) => {
             .insert({
                 id: userId,
                 tier: 'free',
+                monthly_credits: 50,
+                credits_used: 0,
+                overage_enabled: false,
+                subscription_period_start: new Date().toISOString(),
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             });
