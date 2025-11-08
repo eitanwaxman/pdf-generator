@@ -62,12 +62,32 @@ app.use('/cdn/widget', express.static('platforms/generic/widget/dist', {
     }
 }));
 
+// Serve SEO files from public directory (robots.txt, sitemap.xml, manifest.json)
+app.use(express.static('public', {
+    setHeaders: (res, filePath) => {
+        // Set appropriate content types for SEO files
+        if (filePath.endsWith('robots.txt')) {
+            res.setHeader('Content-Type', 'text/plain');
+        } else if (filePath.endsWith('sitemap.xml')) {
+            res.setHeader('Content-Type', 'application/xml');
+        } else if (filePath.endsWith('manifest.json')) {
+            res.setHeader('Content-Type', 'application/manifest+json');
+        }
+    }
+}));
+
 // Serve React app (production build)
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static('dist'));
     // Serve index.html for all non-API routes
     app.get('*', (req, res, next) => {
-        if (req.path.startsWith('/api') || req.path.startsWith('/temp') || req.path.startsWith('/wix')) {
+        // Skip SEO files and API routes
+        if (req.path.startsWith('/api') || 
+            req.path.startsWith('/temp') || 
+            req.path.startsWith('/wix') ||
+            req.path === '/robots.txt' ||
+            req.path === '/sitemap.xml' ||
+            req.path === '/manifest.json') {
             return next();
         }
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));

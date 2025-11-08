@@ -12,6 +12,16 @@ import { Button } from './components/ui/button'
 import { Alert, AlertDescription } from './components/ui/alert'
 import { CheckCircle, XCircle } from 'lucide-react'
 import LandingView from './components/LandingView'
+import SEO from './components/SEO'
+import StructuredData, {
+  generateOrganizationSchema,
+  generateSoftwareApplicationSchema,
+  generateWebSiteSchema,
+  generateBreadcrumbSchema,
+} from './components/StructuredData'
+import { trackPageView, trackPurchase } from './lib/analytics'
+
+const BASE_URL = 'https://docuskribe.com'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -55,6 +65,31 @@ function App() {
       setActiveTab('settings')
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname)
+      
+      // Track purchase after successful checkout
+      // Fetch profile to get tier and price info
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (session) {
+          try {
+            const response = await fetch('/api/v1/user/profile', {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            })
+            if (response.ok) {
+              const data = await response.json()
+              const tier = data.profile?.tier
+              const prices = { starter: 9, pro: 25 }
+              const price = prices[tier] || 0
+              if (tier && price > 0) {
+                trackPurchase(price, 'USD', tier)
+              }
+            }
+          } catch (err) {
+            console.error('Error tracking purchase:', err)
+          }
+        }
+      })
       
       // Auto-dismiss after 10 seconds
       setTimeout(() => setCheckoutStatus(null), 10000)
@@ -143,6 +178,27 @@ function App() {
     } catch {}
   }, [activeTab])
 
+  // Track page views when activeTab changes
+  useEffect(() => {
+    if (activeTab) {
+      const pageTitles = {
+        landing: 'Landing Page',
+        dashboard: 'Dashboard',
+        docs: 'Documentation',
+        plans: 'Pricing Plans',
+        settings: 'Settings',
+        widget: 'Widget Configuration',
+        embed: 'Embed Documentation',
+        auth: 'Authentication',
+      }
+      
+      const title = pageTitles[activeTab] || 'Docuskribe'
+      const path = window.location.pathname
+      
+      trackPageView(path, title)
+    }
+  }, [activeTab])
+
   const loadUserData = async (session, retryCount = 0) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -211,47 +267,191 @@ function App() {
     )
   }
 
+  // Get SEO config based on active tab
+  const getSEOConfig = () => {
+    const path = activeTab === 'landing' ? '/' : `/${activeTab}`
+    const url = `${BASE_URL}${path}`
+    
+    switch (activeTab) {
+      case 'landing':
+        return {
+          title: 'Docuskribe - Generate PDFs and Screenshots from URLs',
+          description: 'A simple, reliable PDF and screenshot generation API with fast rendering, queue-backed workers, and fair pricing. Generate beautiful PDFs from any URL in minutes.',
+          keywords: 'PDF generation, screenshot API, URL to PDF, PDF converter, API, developer tools',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
+      case 'docs':
+        return {
+          title: 'API Documentation - Docuskribe',
+          description: 'Complete API documentation for Docuskribe. Learn how to generate PDFs and screenshots from URLs with our simple REST API.',
+          keywords: 'Docuskribe API, PDF API documentation, screenshot API docs, API reference',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
+      case 'embed':
+        return {
+          title: 'Widget Documentation - Docuskribe',
+          description: 'Learn how to embed the Docuskribe PDF generation widget on your website. Simple integration with just a few lines of code.',
+          keywords: 'PDF widget, embed PDF generator, Docuskribe widget, PDF button widget',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
+      case 'plans':
+        return {
+          title: 'Pricing Plans - Docuskribe',
+          description: 'Choose the perfect plan for your PDF generation needs. Free tier available. Upgrade anytime as you scale.',
+          keywords: 'Docuskribe pricing, PDF API pricing, API plans, subscription plans',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
+      case 'auth':
+        return {
+          title: 'Sign In - Docuskribe',
+          description: 'Sign in to your Docuskribe account to access your API key and manage your PDF generation jobs.',
+          keywords: 'Docuskribe login, sign in, API key',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: true,
+          nofollow: false,
+        }
+      case 'dashboard':
+        return {
+          title: 'Dashboard - Docuskribe',
+          description: 'Manage your PDF generation jobs, view usage statistics, and access your API key.',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: true,
+          nofollow: true,
+        }
+      case 'settings':
+        return {
+          title: 'Settings - Docuskribe',
+          description: 'Manage your account settings, subscription, and API keys.',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: true,
+          nofollow: true,
+        }
+      case 'widget':
+        return {
+          title: 'Widget Configuration - Docuskribe',
+          description: 'Configure your PDF generation widget settings.',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: true,
+          nofollow: true,
+        }
+      default:
+        return {
+          title: 'Docuskribe - Generate PDFs and Screenshots from URLs',
+          description: 'A simple, reliable PDF and screenshot generation API.',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
+    }
+  }
+
+  // Get structured data based on active tab
+  const getStructuredData = () => {
+    switch (activeTab) {
+      case 'landing':
+        return [
+          generateOrganizationSchema(BASE_URL),
+          generateSoftwareApplicationSchema(BASE_URL),
+          generateWebSiteSchema(BASE_URL),
+        ]
+      case 'docs':
+        return [
+          generateBreadcrumbSchema([
+            { name: 'Home', url: BASE_URL },
+            { name: 'API Documentation', url: `${BASE_URL}/docs` },
+          ]),
+        ]
+      case 'embed':
+        return [
+          generateBreadcrumbSchema([
+            { name: 'Home', url: BASE_URL },
+            { name: 'Widget Documentation', url: `${BASE_URL}/embed` },
+          ]),
+        ]
+      case 'plans':
+        return [
+          generateBreadcrumbSchema([
+            { name: 'Home', url: BASE_URL },
+            { name: 'Pricing Plans', url: `${BASE_URL}/plans` },
+          ]),
+        ]
+      default:
+        return null
+    }
+  }
+
+  const seoConfig = getSEOConfig()
+  const structuredData = getStructuredData()
+
   // Not logged in - show landing by default, with options to auth/docs
   if (!session) {
     if (activeTab === 'landing') {
       return (
-        <LandingView 
-          onGetStarted={() => setActiveTab('auth')}
-          onViewDocs={() => setActiveTab('docs')}
-          onViewPlans={() => setActiveTab('auth')}
-        />
+        <>
+          <SEO {...seoConfig} />
+          {structuredData && <StructuredData data={structuredData} />}
+          <LandingView 
+            onGetStarted={() => setActiveTab('auth')}
+            onViewDocs={() => setActiveTab('docs')}
+            onViewPlans={() => setActiveTab('auth')}
+          />
+        </>
       )
     }
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container max-w-4xl mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-6">
-            <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to landing</Button>
+      <>
+        <SEO {...seoConfig} />
+        {structuredData && <StructuredData data={structuredData} />}
+        <div className="min-h-screen bg-background">
+          <div className="container max-w-4xl mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to landing</Button>
+            </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="auth">Sign In</TabsTrigger>
+                <TabsTrigger value="docs">API Docs</TabsTrigger>
+                <TabsTrigger value="embed">Widget</TabsTrigger>
+              </TabsList>
+              <TabsContent value="auth">
+                <AuthView />
+              </TabsContent>
+              <TabsContent value="docs">
+                <DocsView isLoggedIn={false} />
+              </TabsContent>
+              <TabsContent value="embed">
+                <EmbedDocsView onGetStarted={() => setActiveTab('auth')} />
+              </TabsContent>
+            </Tabs>
           </div>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="auth">Sign In</TabsTrigger>
-              <TabsTrigger value="docs">API Docs</TabsTrigger>
-              <TabsTrigger value="embed">Widget</TabsTrigger>
-            </TabsList>
-            <TabsContent value="auth">
-              <AuthView />
-            </TabsContent>
-            <TabsContent value="docs">
-              <DocsView isLoggedIn={false} />
-            </TabsContent>
-            <TabsContent value="embed">
-              <EmbedDocsView onGetStarted={() => setActiveTab('auth')} />
-            </TabsContent>
-          </Tabs>
         </div>
-      </div>
+      </>
     )
   }
 
   // Logged in - show full dashboard with tabs
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <SEO {...seoConfig} />
+      {structuredData && <StructuredData data={structuredData} />}
+      <div className="min-h-screen bg-background">
       <div className="container max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
@@ -372,6 +572,7 @@ function App() {
         </Tabs>
       </div>
     </div>
+    </>
   )
 }
 

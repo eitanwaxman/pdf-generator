@@ -6,6 +6,7 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
 import { Alert, AlertDescription } from './ui/alert'
+import { trackLogin, trackSignUp } from '../lib/analytics'
 
 export default function AuthView() {
   const [activeTab, setActiveTab] = useState('login')
@@ -41,6 +42,7 @@ export default function AuthView() {
       if (error) throw error
 
       setMessage('Login successful! Loading dashboard...')
+      trackLogin('email')
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {
@@ -73,6 +75,7 @@ export default function AuthView() {
       }
 
       setMessage('Magic link sent! Check your email to login.')
+      trackLogin('magic_link')
     } catch (err) {
       setError(err.message || 'Failed to send magic link')
     } finally {
@@ -115,6 +118,7 @@ export default function AuthView() {
       }
 
       setMessage('Account created! Please check your email to verify your account before logging in.')
+      trackSignUp('email')
       
       // Switch to login tab
       setTimeout(() => {

@@ -1,0 +1,21 @@
+# robots.txt for docuskribe.com
+
+User-agent: *
+Allow: /
+Allow: /docs
+Allow: /embed
+Allow: /plans
+
+# Disallow private/user-specific pages
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /widget
+Disallow: /auth
+Disallow: /api/
+Disallow: /temp/
+Disallow: /wix/
+Disallow: /cdn/
+
+# Sitemap location
+Sitemap: https://docuskribe.com/sitemap.xml
+

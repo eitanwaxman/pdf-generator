@@ -7,6 +7,7 @@ import { Select } from './ui/select'
 import { Alert, AlertDescription } from './ui/alert'
 import JobResult from './JobResult'
 import { supabase } from '../lib/supabase'
+import { trackPdfGenerated } from '../lib/analytics'
 
 export default function JobCreator({ apiKey }) {
   const [url, setUrl] = useState('https://example.com')
@@ -139,6 +140,8 @@ export default function JobCreator({ apiKey }) {
           setJobResult(data.result)
           setMessage('Job completed successfully!')
           setLoading(false)
+          // Track successful PDF generation
+          trackPdfGenerated(id, url)
         } else if (data.status === 'failed') {
           setError(data.error || 'Job failed')
           setLoading(false)

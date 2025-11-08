@@ -54,3 +54,4 @@ COMMENT ON COLUMN public_api_keys.authorized_domains IS 'Array of allowed domain
 COMMENT ON COLUMN public_api_keys.enabled IS 'Whether the key is active and can be used';
 COMMENT ON COLUMN public_api_keys.last_used_at IS 'Timestamp of last successful API request with this key';
 
+
