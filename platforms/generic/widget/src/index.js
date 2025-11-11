@@ -22,7 +22,6 @@ class DocuskribeWidget extends HTMLElement {
       'viewport-width',
       'viewport-height',
       'button-text',
-      'api-url',
       'data'
     ];
   }
@@ -34,6 +33,11 @@ class DocuskribeWidget extends HTMLElement {
   }
 
   connectedCallback() {
+    // Deployment marker - update this timestamp when deploying to verify new code is loaded
+    console.log('🚀 Docuskribe Widget v2.0.0 - Initialized');
+    console.log('📅 Deployment timestamp: 2025-01-XX');
+    console.log('✅ Widget loaded and ready');
+    
     this.updateConfig();
     this.render();
   }
@@ -71,7 +75,6 @@ class DocuskribeWidget extends HTMLElement {
       screenshotFullPage: this.getAttribute('screenshot-full-page') !== 'false',
       viewport: this.parseViewport(),
       buttonText: this.getAttribute('button-text') || '',
-      apiUrl: this.getAttribute('api-url') || '',
       data: this.parseData()
     };
   }

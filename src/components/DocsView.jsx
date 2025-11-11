@@ -755,19 +755,6 @@ function WidgetDocs({ onGetStarted }) {
 export default function DocsView({ apiKey, isLoggedIn, onGetStarted }) {
   const [activeSection, setActiveSection] = useState('api')
   
-  // Support URL hash navigation
-  useEffect(() => {
-    const hash = window.location.hash.replace('#', '')
-    if (hash === 'api' || hash === 'widget') {
-      setActiveSection(hash)
-    }
-  }, [])
-  
-  // Update URL hash when section changes
-  useEffect(() => {
-    window.location.hash = activeSection
-  }, [activeSection])
-  
   return (
     <div className="space-y-4">
       {/* Side Navigation - Horizontal on mobile, Vertical on desktop */}

@@ -64,13 +64,15 @@ const PdfButton = ({ config }) => {
       }
 
       // Determine API endpoint
-      // Default to Docuskribe API, but allow override via api-url attribute
+      // ALWAYS use Docuskribe API - never use window.location.origin or config.apiUrl
       // When running in an iframe, window.location.origin would be the iframe domain, not the API domain
-      const apiUrl = config.apiUrl || 'https://www.docuskribe.com';
+      const apiUrl = 'https://www.docuskribe.com';
       const endpoint = `${apiUrl}/api/v1/jobs`;
       
-      console.log('Calling Docuskribe API at:', endpoint);
-      console.log('API URL source:', config.apiUrl ? 'from api-url attribute' : 'default (www.docuskribe.com)');
+      // Deployment marker - update this timestamp when deploying to verify new code is loaded
+      console.log('🚀 Docuskribe Widget v2.0.0 - Deployed: 2025-01-XX');
+      console.log('📡 Calling Docuskribe API at:', endpoint);
+      console.log('✅ API URL: Hardcoded to https://www.docuskribe.com (not from config)');
 
       // Call API with public key
       const response = await fetch(endpoint, {
