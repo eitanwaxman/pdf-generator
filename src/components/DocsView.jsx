@@ -12,6 +12,7 @@ import 'prismjs/components/prism-json'
 import 'prismjs/components/prism-javascript'
 import 'prismjs/components/prism-python'
 import 'prismjs/themes/prism.css'
+import EmbedDocsView from './EmbedDocsView'
 
 // Interactive endpoint component
 function EndpointSection({ 
@@ -621,7 +622,8 @@ console.log(data);`
   )
 }
 
-export default function DocsView({ apiKey, isLoggedIn }) {
+// API Documentation Component
+function ApiDocs({ apiKey, isLoggedIn }) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -741,6 +743,93 @@ export default function DocsView({ apiKey, isLoggedIn }) {
         apiKey={apiKey}
         isLoggedIn={isLoggedIn}
       />
+    </div>
+  )
+}
+
+// Widget Documentation Component (wrapper for EmbedDocsView)
+function WidgetDocs({ onGetStarted }) {
+  return <EmbedDocsView onGetStarted={onGetStarted} />
+}
+
+export default function DocsView({ apiKey, isLoggedIn, onGetStarted }) {
+  const [activeSection, setActiveSection] = useState('api')
+  
+  // Support URL hash navigation
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '')
+    if (hash === 'api' || hash === 'widget') {
+      setActiveSection(hash)
+    }
+  }, [])
+  
+  // Update URL hash when section changes
+  useEffect(() => {
+    window.location.hash = activeSection
+  }, [activeSection])
+  
+  return (
+    <div className="space-y-4">
+      {/* Side Navigation - Horizontal on mobile, Vertical on desktop */}
+      <div className="flex gap-2 md:hidden">
+        <button
+          onClick={() => setActiveSection('api')}
+          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
+            activeSection === 'api'
+              ? 'bg-primary text-primary-foreground font-semibold'
+              : 'hover:bg-muted'
+          }`}
+        >
+          API Reference
+        </button>
+        <button
+          onClick={() => setActiveSection('widget')}
+          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
+            activeSection === 'widget'
+              ? 'bg-primary text-primary-foreground font-semibold'
+              : 'hover:bg-muted'
+          }`}
+        >
+          Widget / Embed
+        </button>
+      </div>
+      
+      <div className="flex gap-6">
+        {/* Side Navigation - Desktop only */}
+        <aside className="hidden md:block w-48 flex-shrink-0">
+          <div className="sticky top-8 space-y-1">
+            <button
+              onClick={() => setActiveSection('api')}
+              className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                activeSection === 'api'
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              API Reference
+            </button>
+            <button
+              onClick={() => setActiveSection('widget')}
+              className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                activeSection === 'widget'
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              Widget / Embed
+            </button>
+          </div>
+        </aside>
+        
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {activeSection === 'api' ? (
+            <ApiDocs apiKey={apiKey} isLoggedIn={isLoggedIn} />
+          ) : (
+            <WidgetDocs onGetStarted={onGetStarted} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }

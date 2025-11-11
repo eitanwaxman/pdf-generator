@@ -88,11 +88,26 @@ const PdfButton = ({ config }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        // Check if response is JSON or HTML
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        } else {
+          // Likely got HTML error page (wrong domain)
+          const text = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}. The request may have been sent to the wrong domain. Check that the API URL is correct.`);
+        }
       }
 
-      const result = await response.json();
+      // Parse JSON response
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        const text = await response.text();
+        throw new Error(`Invalid JSON response from API. The request may have been sent to the wrong domain. Response: ${text.substring(0, 100)}...`);
+      }
 
       // If job-based, poll for completion
       if (result.jobId) {
@@ -127,10 +142,24 @@ const PdfButton = ({ config }) => {
 
       const statusResponse = await fetch(`${backendUrl}/${jobId}`, { headers });
       if (!statusResponse.ok) {
-        throw new Error('Failed to check job status');
+        const contentType = statusResponse.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await statusResponse.json();
+          throw new Error(errorData.error || `Failed to check job status: ${statusResponse.status}`);
+        } else {
+          const text = await statusResponse.text();
+          throw new Error(`Failed to check job status. The request may have been sent to the wrong domain. Status: ${statusResponse.status}`);
+        }
       }
 
-      const status = await statusResponse.json();
+      // Parse JSON response
+      let status;
+      try {
+        status = await statusResponse.json();
+      } catch (e) {
+        const text = await statusResponse.text();
+        throw new Error(`Invalid JSON response when checking job status. Response: ${text.substring(0, 100)}...`);
+      }
 
       if (status.status === 'completed') {
         return status.result.pdf;

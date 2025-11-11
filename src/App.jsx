@@ -6,7 +6,6 @@ import DocsView from './components/DocsView'
 import PlansView from './components/PlansView'
 import SettingsView from './components/SettingsView'
 import WidgetConfigView from './components/WidgetConfigView'
-import EmbedDocsView from './components/EmbedDocsView'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
 import { Button } from './components/ui/button'
 import { Alert, AlertDescription } from './components/ui/alert'
@@ -41,7 +40,6 @@ function App() {
       if (pathname.startsWith('/plans')) return 'plans'
       if (pathname.startsWith('/settings')) return 'settings'
       if (pathname.startsWith('/widget')) return 'widget'
-      if (pathname.startsWith('/embed')) return 'embed'
       if (pathname.startsWith('/auth')) return 'auth'
       return 'landing'
     }
@@ -163,7 +161,6 @@ function App() {
           plans: '/plans',
           settings: '/settings',
           widget: '/widget',
-          embed: '/embed',
         }
         const currentPath = tabToPath[activeTab] || '/'
         // Only preserve query params when staying on docs tab
@@ -188,7 +185,6 @@ function App() {
         plans: 'Pricing Plans',
         settings: 'Settings',
         widget: 'Widget Configuration',
-        embed: 'Embed Documentation',
         auth: 'Authentication',
       }
       
@@ -285,19 +281,9 @@ function App() {
         }
       case 'docs':
         return {
-          title: 'API Documentation - Docuskribe',
-          description: 'Complete API documentation for Docuskribe. Learn how to generate PDFs and screenshots from URLs with our simple REST API.',
-          keywords: 'Docuskribe API, PDF API documentation, screenshot API docs, API reference',
-          canonical: url,
-          ogImage: `${BASE_URL}/og-image.png`,
-          noindex: false,
-          nofollow: false,
-        }
-      case 'embed':
-        return {
-          title: 'Widget Documentation - Docuskribe',
-          description: 'Learn how to embed the Docuskribe PDF generation widget on your website. Simple integration with just a few lines of code.',
-          keywords: 'PDF widget, embed PDF generator, Docuskribe widget, PDF button widget',
+          title: 'Documentation - Docuskribe',
+          description: 'Complete documentation for Docuskribe. Learn how to generate PDFs and screenshots from URLs with our API or embed widget.',
+          keywords: 'Docuskribe API, PDF API documentation, screenshot API docs, API reference, PDF widget, embed',
           canonical: url,
           ogImage: `${BASE_URL}/og-image.png`,
           noindex: false,
@@ -375,14 +361,7 @@ function App() {
         return [
           generateBreadcrumbSchema([
             { name: 'Home', url: BASE_URL },
-            { name: 'API Documentation', url: `${BASE_URL}/docs` },
-          ]),
-        ]
-      case 'embed':
-        return [
-          generateBreadcrumbSchema([
-            { name: 'Home', url: BASE_URL },
-            { name: 'Widget Documentation', url: `${BASE_URL}/embed` },
+            { name: 'Documentation', url: `${BASE_URL}/docs` },
           ]),
         ]
       case 'plans':
@@ -425,19 +404,15 @@ function App() {
               <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to landing</Button>
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="auth">Sign In</TabsTrigger>
-                <TabsTrigger value="docs">API Docs</TabsTrigger>
-                <TabsTrigger value="embed">Widget</TabsTrigger>
+                <TabsTrigger value="docs">Documentation</TabsTrigger>
               </TabsList>
               <TabsContent value="auth">
                 <AuthView />
               </TabsContent>
               <TabsContent value="docs">
-                <DocsView isLoggedIn={false} />
-              </TabsContent>
-              <TabsContent value="embed">
-                <EmbedDocsView onGetStarted={() => setActiveTab('auth')} />
+                <DocsView isLoggedIn={false} onGetStarted={() => setActiveTab('auth')} />
               </TabsContent>
             </Tabs>
           </div>
@@ -522,11 +497,10 @@ function App() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="docs">API Docs</TabsTrigger>
+            <TabsTrigger value="docs">Documentation</TabsTrigger>
             <TabsTrigger value="widget">Widget</TabsTrigger>
-            <TabsTrigger value="embed">Embed Docs</TabsTrigger>
             <TabsTrigger value="plans">
               Plans
               {profile?.tier === 'free' && (
@@ -543,15 +517,11 @@ function App() {
           </TabsContent>
 
           <TabsContent value="docs">
-            <DocsView apiKey={apiKey} isLoggedIn={true} />
+            <DocsView apiKey={apiKey} isLoggedIn={true} onGetStarted={() => setActiveTab('widget')} />
           </TabsContent>
 
           <TabsContent value="widget">
             <WidgetConfigView session={session} />
-          </TabsContent>
-
-          <TabsContent value="embed">
-            <EmbedDocsView onGetStarted={() => setActiveTab('widget')} />
           </TabsContent>
 
           <TabsContent value="plans">

@@ -64,10 +64,13 @@ const PdfButton = ({ config }) => {
       }
 
       // Determine API endpoint
-      const apiUrl = config.apiUrl || window.location.origin;
+      // Default to Docuskribe API, but allow override via api-url attribute
+      // When running in an iframe, window.location.origin would be the iframe domain, not the API domain
+      const apiUrl = config.apiUrl || 'https://www.docuskribe.com';
       const endpoint = `${apiUrl}/api/v1/jobs`;
       
       console.log('Calling Docuskribe API at:', endpoint);
+      console.log('API URL source:', config.apiUrl ? 'from api-url attribute' : 'default (www.docuskribe.com)');
 
       // Call API with public key
       const response = await fetch(endpoint, {
@@ -83,15 +86,30 @@ const PdfButton = ({ config }) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        // Check if response is JSON or HTML
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        } else {
+          // Likely got HTML error page (wrong domain)
+          const text = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}. The request may have been sent to the wrong domain. Check that the API URL is correct.`);
+        }
       }
 
-      const result = await response.json();
+      // Parse JSON response
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        const text = await response.text();
+        throw new Error(`Invalid JSON response from API. The request may have been sent to the wrong domain. Response: ${text.substring(0, 100)}...`);
+      }
 
       // Poll for job completion
       if (result.jobId) {
-        const output = await pollForJobCompletion(endpoint, result.jobId, config.publicKey);
+        const output = await pollForJobCompletion(apiUrl, result.jobId, config.publicKey);
         await handleOutput(output, config.outputType);
       } else {
         throw new Error('Invalid response from API');
@@ -108,20 +126,36 @@ const PdfButton = ({ config }) => {
   };
 
   const pollForJobCompletion = async (baseUrl, jobId, publicKey, maxAttempts = 60) => {
+    const statusEndpoint = `${baseUrl}/api/v1/jobs/${jobId}`;
+    
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
-      const statusResponse = await fetch(`${baseUrl}/${jobId}`, {
+      const statusResponse = await fetch(statusEndpoint, {
         headers: {
           'X-Public-Key': publicKey
         }
       });
       
       if (!statusResponse.ok) {
-        throw new Error('Failed to check job status');
+        const contentType = statusResponse.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await statusResponse.json();
+          throw new Error(errorData.error || `Failed to check job status: ${statusResponse.status}`);
+        } else {
+          const text = await statusResponse.text();
+          throw new Error(`Failed to check job status. The request may have been sent to the wrong domain. Status: ${statusResponse.status}`);
+        }
       }
 
-      const status = await statusResponse.json();
+      // Parse JSON response
+      let status;
+      try {
+        status = await statusResponse.json();
+      } catch (e) {
+        const text = await statusResponse.text();
+        throw new Error(`Invalid JSON response when checking job status. Response: ${text.substring(0, 100)}...`);
+      }
 
       if (status.status === 'completed') {
         return status.result;
