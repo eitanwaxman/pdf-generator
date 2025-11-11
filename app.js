@@ -56,9 +56,16 @@ app.use('/wix/settings-panel/dist', express.static('platforms/wix/settings-panel
 app.use('/cdn/widget', express.static('platforms/generic/widget/dist', {
     maxAge: '1h',
     etag: true,
-    setHeaders: (res, path) => {
+    setHeaders: (res, filePath) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'public, max-age=3600');
+        // Temporarily disable caching for bundle.js to force fresh load after fix
+        if (filePath.endsWith('bundle.js')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
     }
 }));
 
