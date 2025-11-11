@@ -129,9 +129,13 @@ const PdfButton = ({ config }) => {
 
   const pollForJobCompletion = async (baseUrl, jobId, publicKey, maxAttempts = 60) => {
     const statusEndpoint = `${baseUrl}/api/v1/jobs/${jobId}`;
+    const POLL_INTERVAL_MS = 5000; // Poll at most once every 5 seconds (rate limit)
     
     for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      // Wait 5 seconds between polls (or before first poll if i > 0)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
 
       const statusResponse = await fetch(statusEndpoint, {
         headers: {
@@ -143,6 +147,14 @@ const PdfButton = ({ config }) => {
         const contentType = statusResponse.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
           const errorData = await statusResponse.json();
+          
+          // Handle rate limit (429) - wait and retry
+          if (statusResponse.status === 429) {
+            console.log('⏳ Rate limited, waiting 5 seconds before retry...');
+            await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+            continue; // Retry this iteration
+          }
+          
           throw new Error(errorData.error || `Failed to check job status: ${statusResponse.status}`);
         } else {
           const text = await statusResponse.text();
