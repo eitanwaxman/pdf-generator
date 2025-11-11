@@ -5,7 +5,59 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select } from './ui/select'
 import { Alert, AlertDescription } from './ui/alert'
-import { Copy, Plus, Trash2, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+import { Copy, Plus, Trash2, Eye, EyeOff, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+
+// Domain validation helper
+const validateDomain = (domain) => {
+  if (!domain || !domain.trim()) {
+    return { valid: true, error: null } // Empty domains are filtered out later
+  }
+  
+  const trimmed = domain.trim()
+  
+  // Check for protocol (http://, https://, etc.)
+  if (trimmed.match(/^[a-zA-Z]+:\/\//)) {
+    return { 
+      valid: false, 
+      error: 'Remove protocol (http://, https://). Use only the domain name.' 
+    }
+  }
+  
+  // Check for paths
+  if (trimmed.includes('/')) {
+    return { 
+      valid: false, 
+      error: 'Remove path. Use only the domain name (e.g., example.com).' 
+    }
+  }
+  
+  // Check for query parameters
+  if (trimmed.includes('?')) {
+    return { 
+      valid: false, 
+      error: 'Remove query parameters. Use only the domain name.' 
+    }
+  }
+  
+  // Check for valid patterns
+  const validPatterns = [
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/, // example.com
+    /^\*\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/, // *.example.com
+    /^localhost(:\d+)?$/, // localhost or localhost:3000
+    /^localhost:\*$/, // localhost:*
+  ]
+  
+  const isValid = validPatterns.some(pattern => pattern.test(trimmed))
+  
+  if (!isValid) {
+    return { 
+      valid: false, 
+      error: 'Invalid domain format. Use example.com, *.example.com, or localhost:*' 
+    }
+  }
+  
+  return { valid: true, error: null }
+}
 
 export default function WidgetConfigView({ session }) {
   const [publicKeys, setPublicKeys] = useState([])
@@ -18,6 +70,7 @@ export default function WidgetConfigView({ session }) {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
   const [newKeyDomains, setNewKeyDomains] = useState([''])
+  const [newKeyDomainErrors, setNewKeyDomainErrors] = useState([])
   const [creating, setCreating] = useState(false)
   
   // Widget configuration state
@@ -40,6 +93,7 @@ export default function WidgetConfigView({ session }) {
   // Domain editing state
   const [editingDomains, setEditingDomains] = useState(null)
   const [tempDomains, setTempDomains] = useState([])
+  const [tempDomainErrors, setTempDomainErrors] = useState([])
   const [showKeys, setShowKeys] = useState({})
 
   useEffect(() => {
@@ -90,6 +144,16 @@ export default function WidgetConfigView({ session }) {
     
     if (domains.length === 0) {
       showMessage('Please add at least one authorized domain', 'error')
+      return
+    }
+    
+    // Validate all domains
+    const errors = domains.map(d => validateDomain(d))
+    setNewKeyDomainErrors(errors)
+    
+    const hasErrors = errors.some(e => !e.valid)
+    if (hasErrors) {
+      showMessage('Please fix the domain validation errors', 'error')
       return
     }
 
@@ -164,6 +228,16 @@ export default function WidgetConfigView({ session }) {
     
     if (domains.length === 0) {
       showMessage('Please add at least one authorized domain', 'error')
+      return
+    }
+    
+    // Validate all domains
+    const errors = domains.map(d => validateDomain(d))
+    setTempDomainErrors(errors)
+    
+    const hasErrors = errors.some(e => !e.valid)
+    if (hasErrors) {
+      showMessage('Please fix the domain validation errors', 'error')
       return
     }
 
@@ -298,28 +372,46 @@ export default function WidgetConfigView({ session }) {
                 <div>
                   <Label>Authorized Domains</Label>
                   <div className="space-y-2">
-                    {newKeyDomains.map((domain, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder="example.com or *.example.com"
-                          value={domain}
-                          onChange={(e) => {
-                            const updated = [...newKeyDomains]
-                            updated[index] = e.target.value
-                            setNewKeyDomains(updated)
-                          }}
-                        />
-                        {newKeyDomains.length > 1 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setNewKeyDomains(newKeyDomains.filter((_, i) => i !== index))}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                    {newKeyDomains.map((domain, index) => {
+                      const validation = validateDomain(domain)
+                      const showError = domain.trim() && !validation.valid
+                      
+                      return (
+                        <div key={index} className="space-y-1">
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <Input
+                                placeholder="example.com or *.example.com"
+                                value={domain}
+                                onChange={(e) => {
+                                  const updated = [...newKeyDomains]
+                                  updated[index] = e.target.value
+                                  setNewKeyDomains(updated)
+                                  // Clear error when user starts typing
+                                  setNewKeyDomainErrors([])
+                                }}
+                                className={showError ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                              />
+                              {showError && (
+                                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                  <XCircle className="h-3 w-3" />
+                                  {validation.error}
+                                </p>
+                              )}
+                            </div>
+                            {newKeyDomains.length > 1 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setNewKeyDomains(newKeyDomains.filter((_, i) => i !== index))}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                     <Button
                       variant="outline"
                       size="sm"
@@ -431,25 +523,43 @@ export default function WidgetConfigView({ session }) {
                         
                         {editingDomains === key.id ? (
                           <div className="space-y-2">
-                            {tempDomains.map((domain, index) => (
-                              <div key={index} className="flex gap-2">
-                                <Input
-                                  value={domain}
-                                  onChange={(e) => {
-                                    const updated = [...tempDomains]
-                                    updated[index] = e.target.value
-                                    setTempDomains(updated)
-                                  }}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setTempDomains(tempDomains.filter((_, i) => i !== index))}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
+                            {tempDomains.map((domain, index) => {
+                              const validation = validateDomain(domain)
+                              const showError = domain.trim() && !validation.valid
+                              
+                              return (
+                                <div key={index} className="space-y-1">
+                                  <div className="flex gap-2">
+                                    <div className="flex-1">
+                                      <Input
+                                        value={domain}
+                                        onChange={(e) => {
+                                          const updated = [...tempDomains]
+                                          updated[index] = e.target.value
+                                          setTempDomains(updated)
+                                          // Clear error when user starts typing
+                                          setTempDomainErrors([])
+                                        }}
+                                        className={showError ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                                      />
+                                      {showError && (
+                                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                          <XCircle className="h-3 w-3" />
+                                          {validation.error}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setTempDomains(tempDomains.filter((_, i) => i !== index))}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )
+                            })}
                             <Button
                               variant="outline"
                               size="sm"

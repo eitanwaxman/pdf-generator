@@ -61,7 +61,12 @@ function generatePublicKey() {
  * Also supports localhost:* for development
  */
 function matchesDomain(origin, domainPattern) {
-    if (!origin || !domainPattern) return false;
+    console.log(`  🔍 matchesDomain: Comparing origin="${origin}" with pattern="${domainPattern}"`);
+    
+    if (!origin || !domainPattern) {
+        console.log(`  ❌ matchesDomain: Missing origin or pattern (origin: ${origin}, pattern: ${domainPattern})`);
+        return false;
+    }
     
     // Parse origin to get hostname and port
     let hostname, port;
@@ -69,36 +74,61 @@ function matchesDomain(origin, domainPattern) {
         const url = new URL(origin);
         hostname = url.hostname;
         port = url.port;
+        console.log(`  📋 matchesDomain: Parsed origin - hostname="${hostname}", port="${port || '(default)'}"`);
     } catch (e) {
         // If origin is not a valid URL, try to parse it as hostname:port
         const parts = origin.split(':');
         hostname = parts[0];
         port = parts[1] || '';
+        console.log(`  📋 matchesDomain: Parsed origin as hostname:port - hostname="${hostname}", port="${port || '(none)'}"`);
     }
     
     // Exact match
-    if (hostname === domainPattern) return true;
+    if (hostname === domainPattern) {
+        console.log(`  ✅ matchesDomain: Exact hostname match: "${hostname}" === "${domainPattern}"`);
+        return true;
+    }
     
     // Localhost with wildcard port: localhost:*
-    if (domainPattern === 'localhost:*' && hostname === 'localhost') return true;
+    if (domainPattern === 'localhost:*' && hostname === 'localhost') {
+        console.log(`  ✅ matchesDomain: Localhost wildcard match: "${hostname}" matches "${domainPattern}"`);
+        return true;
+    }
     if (domainPattern.startsWith('localhost:') && hostname === 'localhost') {
         const patternPort = domainPattern.split(':')[1];
-        if (patternPort === '*') return true;
-        if (patternPort === port) return true;
+        if (patternPort === '*') {
+            console.log(`  ✅ matchesDomain: Localhost wildcard port match`);
+            return true;
+        }
+        if (patternPort === port) {
+            console.log(`  ✅ matchesDomain: Localhost port match: "${port}" === "${patternPort}"`);
+            return true;
+        }
     }
     
     // Wildcard subdomain: *.example.com
     if (domainPattern.startsWith('*.')) {
         const baseDomain = domainPattern.substring(2);
+        console.log(`  🔍 matchesDomain: Checking wildcard pattern - baseDomain="${baseDomain}"`);
         // Match exact subdomain or nested subdomains
-        if (hostname.endsWith('.' + baseDomain)) return true;
-        if (hostname === baseDomain) return true;
+        if (hostname.endsWith('.' + baseDomain)) {
+            console.log(`  ✅ matchesDomain: Wildcard subdomain match: "${hostname}" ends with ".${baseDomain}"`);
+            return true;
+        }
+        if (hostname === baseDomain) {
+            console.log(`  ✅ matchesDomain: Wildcard base domain match: "${hostname}" === "${baseDomain}"`);
+            return true;
+        }
     }
     
     // Domain with port
     const hostnameWithPort = port ? `${hostname}:${port}` : hostname;
-    if (hostnameWithPort === domainPattern) return true;
+    if (hostnameWithPort === domainPattern) {
+        console.log(`  ✅ matchesDomain: Hostname with port match: "${hostnameWithPort}" === "${domainPattern}"`);
+        return true;
+    }
     
+    console.log(`  ❌ matchesDomain: No match found for origin="${origin}" (hostname="${hostname}") with pattern="${domainPattern}"`);
     return false;
 }
 
@@ -106,10 +136,27 @@ function matchesDomain(origin, domainPattern) {
  * Validate origin against authorized domains
  */
 function isOriginAuthorized(origin, authorizedDomains) {
-    if (!origin || !Array.isArray(authorizedDomains)) return false;
-    if (authorizedDomains.length === 0) return false;
+    console.log(`\n🔐 isOriginAuthorized: Checking origin="${origin}" against authorized domains:`, authorizedDomains);
     
-    return authorizedDomains.some(domain => matchesDomain(origin, domain));
+    if (!origin || !Array.isArray(authorizedDomains)) {
+        console.log(`  ❌ isOriginAuthorized: Invalid input - origin: ${origin}, authorizedDomains: ${Array.isArray(authorizedDomains) ? 'array' : typeof authorizedDomains}`);
+        return false;
+    }
+    if (authorizedDomains.length === 0) {
+        console.log(`  ❌ isOriginAuthorized: No authorized domains configured`);
+        return false;
+    }
+    
+    console.log(`  🔍 isOriginAuthorized: Checking ${authorizedDomains.length} domain pattern(s)...`);
+    const result = authorizedDomains.some(domain => matchesDomain(origin, domain));
+    
+    if (result) {
+        console.log(`  ✅ isOriginAuthorized: Origin authorized!`);
+    } else {
+        console.log(`  ❌ isOriginAuthorized: Origin NOT authorized - none of the patterns matched`);
+    }
+    
+    return result;
 }
 
 /**
@@ -160,29 +207,40 @@ const createPublicKeyForUser = async (userId, name, authorizedDomains = []) => {
  * @returns {Promise<{userId: string, tier: string, name: string, keyId: string} | null>}
  */
 const validatePublicKey = async (publicKey, origin) => {
+    console.log('\n🔍 validatePublicKey: Starting validation');
+    console.log('  Public Key:', publicKey ? `${publicKey.substring(0, 20)}...` : 'not provided');
+    console.log('  Origin:', origin);
+    
     try {
         if (!publicKey) {
-            console.error('validatePublicKey: No public key provided');
+            console.error('❌ validatePublicKey: No public key provided');
             return null;
         }
         
         // Validate key format
         if (!publicKey.startsWith('pk_live_')) {
-            console.error('validatePublicKey: Invalid public key format');
+            console.error('❌ validatePublicKey: Invalid public key format - must start with pk_live_');
             return null;
         }
         
         const trimmedKey = publicKey.trim();
+        console.log('  ✅ validatePublicKey: Key format valid');
         
         // Check cache first
         const cached = getCachedValidation(trimmedKey);
         if (cached !== undefined) {
+            console.log('  💾 validatePublicKey: Using cached validation result');
             // If cached key exists, validate origin
-            if (cached === null) return null;
-            if (!isOriginAuthorized(origin, cached.authorized_domains)) {
-                console.log('validatePublicKey: Origin not authorized:', origin);
+            if (cached === null) {
+                console.log('  ❌ validatePublicKey: Key not found in cache (negative cache)');
                 return null;
             }
+            console.log('  📋 validatePublicKey: Cached key data - authorized_domains:', cached.authorized_domains);
+            if (!isOriginAuthorized(origin, cached.authorized_domains)) {
+                console.log('  ❌ validatePublicKey: Origin not authorized (from cache)');
+                return null;
+            }
+            console.log('  ✅ validatePublicKey: Origin authorized (from cache)');
             return {
                 userId: cached.user_id,
                 tier: cached.tier,
@@ -190,6 +248,8 @@ const validatePublicKey = async (publicKey, origin) => {
                 keyId: cached.id
             };
         }
+        
+        console.log('  🔍 validatePublicKey: Key not in cache, querying database...');
         
         // Query public API key
         const { data: keyData, error: keyError } = await supabase
@@ -201,23 +261,39 @@ const validatePublicKey = async (publicKey, origin) => {
         
         if (keyError || !keyData) {
             if (keyError && keyError.code === 'PGRST116') {
-                console.log('validatePublicKey: Public key not found or disabled');
+                console.log('  ❌ validatePublicKey: Public key not found or disabled');
             } else {
-                console.error('validatePublicKey: Error fetching public key:', keyError);
+                console.error('  ❌ validatePublicKey: Error fetching public key:', keyError);
             }
             setCachedValidation(trimmedKey, null, CACHE_TTL_FAILURE);
             return null;
         }
         
-        console.log('validatePublicKey: Found public key for user:', keyData.user_id);
+        console.log('  ✅ validatePublicKey: Found public key in database');
+        console.log('  📋 validatePublicKey: Key details:', {
+            id: keyData.id,
+            user_id: keyData.user_id,
+            name: keyData.name,
+            enabled: keyData.enabled,
+            authorized_domains: keyData.authorized_domains
+        });
         
         // Validate origin against authorized domains
+        console.log('  🔐 validatePublicKey: Validating origin against authorized domains...');
         if (!isOriginAuthorized(origin, keyData.authorized_domains)) {
-            console.log('validatePublicKey: Origin not authorized:', origin, 'Allowed:', keyData.authorized_domains);
+            console.log('  ❌ validatePublicKey: Origin NOT authorized');
+            console.log('  📊 validatePublicKey: Summary:', {
+                origin: origin,
+                authorized_domains: keyData.authorized_domains,
+                match: false
+            });
             return null;
         }
         
+        console.log('  ✅ validatePublicKey: Origin authorized!');
+        
         // Get user profile for tier information
+        console.log('  👤 validatePublicKey: Fetching user profile...');
         const { data: profileData, error: profileError } = await supabase
             .from('user_profiles')
             .select('tier')
@@ -225,9 +301,11 @@ const validatePublicKey = async (publicKey, origin) => {
             .single();
         
         if (profileError) {
-            console.error('validatePublicKey: Error fetching user profile:', profileError);
+            console.error('  ❌ validatePublicKey: Error fetching user profile:', profileError);
             return null;
         }
+        
+        console.log('  ✅ validatePublicKey: User profile fetched - tier:', profileData.tier);
         
         // Update last_used_at (don't wait for it)
         supabase
@@ -235,7 +313,7 @@ const validatePublicKey = async (publicKey, origin) => {
             .update({ last_used_at: new Date().toISOString() })
             .eq('id', keyData.id)
             .then(({ error }) => {
-                if (error) console.error('Error updating last_used_at:', error);
+                if (error) console.error('  ⚠️ validatePublicKey: Error updating last_used_at:', error);
             });
         
         const result = {
@@ -245,6 +323,14 @@ const validatePublicKey = async (publicKey, origin) => {
             keyId: keyData.id
         };
         
+        console.log('  ✅ validatePublicKey: Validation successful!');
+        console.log('  📊 validatePublicKey: Final result:', {
+            userId: result.userId,
+            tier: result.tier,
+            name: result.name,
+            keyId: result.keyId
+        });
+        
         // Cache with profile data
         setCachedValidation(trimmedKey, {
             ...keyData,
@@ -252,9 +338,11 @@ const validatePublicKey = async (publicKey, origin) => {
             key_name: keyData.name
         }, CACHE_TTL_SUCCESS);
         
+        console.log('  💾 validatePublicKey: Result cached\n');
         return result;
     } catch (error) {
-        console.error('validatePublicKey: Error:', error);
+        console.error('  ❌ validatePublicKey: Error:', error);
+        console.error('  📋 validatePublicKey: Stack:', error.stack);
         return null;
     }
 };
