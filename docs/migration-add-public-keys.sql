@@ -55,3 +55,4 @@ COMMENT ON COLUMN public_api_keys.enabled IS 'Whether the key is active and can 
 COMMENT ON COLUMN public_api_keys.last_used_at IS 'Timestamp of last successful API request with this key';
 
 
+

@@ -522,10 +522,11 @@ function App() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="docs">API Docs</TabsTrigger>
             <TabsTrigger value="widget">Widget</TabsTrigger>
+            <TabsTrigger value="embed">Embed Docs</TabsTrigger>
             <TabsTrigger value="plans">
               Plans
               {profile?.tier === 'free' && (
@@ -547,6 +548,10 @@ function App() {
 
           <TabsContent value="widget">
             <WidgetConfigView session={session} />
+          </TabsContent>
+
+          <TabsContent value="embed">
+            <EmbedDocsView onGetStarted={() => setActiveTab('widget')} />
           </TabsContent>
 
           <TabsContent value="plans">

@@ -85,6 +85,7 @@ if (process.env.NODE_ENV === 'production') {
         if (req.path.startsWith('/api') || 
             req.path.startsWith('/temp') || 
             req.path.startsWith('/wix') ||
+            req.path.startsWith('/cdn') ||
             req.path === '/robots.txt' ||
             req.path === '/sitemap.xml' ||
             req.path === '/manifest.json') {
