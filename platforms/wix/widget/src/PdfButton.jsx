@@ -6,6 +6,12 @@ const PdfButton = ({ config }) => {
   const [success, setSuccess] = useState(false);
 
   const generatePdf = async () => {
+    console.log('[PDF Button] generatePdf() called');
+    console.log('[PDF Button] Config received:', {
+      ...config,
+      accessToken: config.accessToken ? `Present (${config.accessToken.length} chars)` : 'Missing'
+    });
+    
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -15,6 +21,9 @@ const PdfButton = ({ config }) => {
       const urlToConvert = config.urlSource === 'custom' && config.customUrl
         ? config.customUrl
         : window.location.href;
+      
+      console.log('[PDF Button] URL to convert:', urlToConvert);
+      console.log('[PDF Button] URL source:', config.urlSource);
 
       // Prepare options for PDF generation
       const options = {
@@ -23,6 +32,8 @@ const PdfButton = ({ config }) => {
         platform: 'wix', // Always use wix platform
         formFactor: config.formFactor
       };
+      
+      console.log('[PDF Button] PDF options:', options);
 
       // Add PDF-specific options
       if (config.outputType === 'pdf' || !config.outputType) {
@@ -62,7 +73,7 @@ const PdfButton = ({ config }) => {
       // Use Docuskribe API endpoint
       const backendUrl = 'https://www.docuskribe.com/wix/api/generate-pdf';
       
-      console.log('Calling PDF API at:', backendUrl);
+      console.log('[PDF Button] Calling PDF API at:', backendUrl);
 
       // Prepare headers with access token for authentication
       const headers = {
@@ -72,80 +83,139 @@ const PdfButton = ({ config }) => {
       // Add access token for backend authentication
       if (config.accessToken) {
         headers['Authorization'] = config.accessToken;
-        console.log('Sending authenticated request with access token');
+        console.log('[PDF Button] ✅ Adding Authorization header with access token');
+        console.log('[PDF Button] Token preview:', config.accessToken.substring(0, 30) + '...');
       } else {
-        console.warn('No access token available - request may fail');
+        console.error('[PDF Button] ❌ No access token available in config!');
+        console.error('[PDF Button] Config object:', config);
+        console.error('[PDF Button] This request will likely fail with 401 Unauthorized');
       }
+      
+      console.log('[PDF Button] Request headers:', {
+        ...headers,
+        Authorization: headers.Authorization ? 'Present' : 'Missing'
+      });
 
       // Call backend API
+      const requestBody = {
+        url: urlToConvert,
+        options
+      };
+      
+      console.log('[PDF Button] Sending POST request to:', backendUrl);
+      console.log('[PDF Button] Request body:', JSON.stringify(requestBody, null, 2));
+      
       const response = await fetch(backendUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          url: urlToConvert,
-          options
-        })
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('[PDF Button] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       });
 
       if (!response.ok) {
         // Check if response is JSON or HTML
         const contentType = response.headers.get('content-type') || '';
+        console.error('[PDF Button] ❌ Request failed with status:', response.status);
+        console.error('[PDF Button] Response content-type:', contentType);
+        
         if (contentType.includes('application/json')) {
           const errorData = await response.json();
+          console.error('[PDF Button] Error response data:', errorData);
           throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         } else {
           // Likely got HTML error page (wrong domain)
           const text = await response.text();
+          console.error('[PDF Button] Non-JSON error response (first 200 chars):', text.substring(0, 200));
           throw new Error(`HTTP error! status: ${response.status}. The request may have been sent to the wrong domain. Check that the API URL is correct.`);
         }
       }
+      
+      console.log('[PDF Button] ✅ Request successful');
 
       // Parse JSON response
       let result;
       try {
         result = await response.json();
+        console.log('[PDF Button] Response parsed successfully:', {
+          hasJobId: !!result.jobId,
+          hasPdf: !!result.pdf,
+          keys: Object.keys(result)
+        });
       } catch (e) {
         const text = await response.text();
+        console.error('[PDF Button] ❌ Failed to parse JSON response:', e);
+        console.error('[PDF Button] Response text (first 200 chars):', text.substring(0, 200));
         throw new Error(`Invalid JSON response from API. The request may have been sent to the wrong domain. Response: ${text.substring(0, 100)}...`);
       }
 
       // If job-based, poll for completion
       if (result.jobId) {
+        console.log('[PDF Button] Job-based response, starting polling for jobId:', result.jobId);
         const pdf = await pollForJobCompletion(backendUrl, result.jobId, config.accessToken);
         await handlePdfResult(pdf);
       } else if (result.pdf) {
-        // Direct PDF result
+        console.log('[PDF Button] Direct PDF result received');
         await handlePdfResult(result.pdf);
       } else {
+        console.error('[PDF Button] ❌ Invalid response structure:', result);
         throw new Error('Invalid response from backend');
       }
 
+      console.log('[PDF Button] ✅ PDF generation completed successfully');
       setSuccess(true);
       setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
-      console.error('Error generating PDF:', err);
+      console.error('[PDF Button] ❌ Error generating PDF:', err);
+      console.error('[PDF Button] Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
       setError(err.message || 'Failed to generate PDF');
     } finally {
       setLoading(false);
+      console.log('[PDF Button] generatePdf() completed');
     }
   };
 
   const pollForJobCompletion = async (backendUrl, jobId, accessToken, maxAttempts = 60) => {
+    console.log('[PDF Button] Starting job polling:', { jobId, maxAttempts, accessToken: accessToken ? 'Present' : 'Missing' });
     const POLL_INTERVAL_MS = 5000; // Poll at most once every 5 seconds (rate limit)
     
     for (let i = 0; i < maxAttempts; i++) {
       // Wait 5 seconds between polls (or before first poll if i > 0)
       if (i > 0) {
+        console.log(`[PDF Button] Polling attempt ${i + 1}/${maxAttempts}, waiting ${POLL_INTERVAL_MS}ms...`);
         await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      } else {
+        console.log(`[PDF Button] Initial poll attempt ${i + 1}/${maxAttempts}`);
       }
 
       // Prepare headers with access token
       const headers = {};
       if (accessToken) {
         headers['Authorization'] = accessToken;
+        console.log('[PDF Button] Poll request includes Authorization header');
+      } else {
+        console.warn('[PDF Button] ⚠️ Poll request missing Authorization header');
       }
 
-      const statusResponse = await fetch(`${backendUrl}/${jobId}`, { headers });
+      const pollUrl = `${backendUrl}/${jobId}`;
+      console.log('[PDF Button] Polling job status at:', pollUrl);
+      
+      const statusResponse = await fetch(pollUrl, { headers });
+      
+      console.log('[PDF Button] Poll response:', {
+        status: statusResponse.status,
+        statusText: statusResponse.statusText,
+        ok: statusResponse.ok
+      });
       if (!statusResponse.ok) {
         const contentType = statusResponse.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -175,13 +245,18 @@ const PdfButton = ({ config }) => {
       }
 
       if (status.status === 'completed') {
+        console.log('[PDF Button] ✅ Job completed successfully');
         return status.result.pdf;
       } else if (status.status === 'failed') {
+        console.error('[PDF Button] ❌ Job failed:', status.error);
         throw new Error(status.error || 'PDF generation failed');
+      } else {
+        console.log('[PDF Button] Job still processing, status:', status.status);
       }
       // Continue polling if still processing
     }
 
+    console.error('[PDF Button] ❌ Job polling timed out after', maxAttempts, 'attempts');
     throw new Error('PDF generation timed out');
   };
 

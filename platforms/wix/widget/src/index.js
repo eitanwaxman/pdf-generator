@@ -39,33 +39,72 @@ class PdfGeneratorButton extends HTMLElement {
     // Initialize Wix Client
     const APP_ID = 'b715943d-8922-43a5-8728-c77c19d77879';
     
+    console.log('[PDF Widget] Initializing Wix client with APP_ID:', APP_ID);
+    console.log('[PDF Widget] Window location:', window.location.href);
+    console.log('[PDF Widget] Site host available:', typeof site !== 'undefined');
+    
     try {
       this.wixClient = createClient({
         host: site.host({ applicationId: APP_ID }),
         auth: site.auth()
       });
-      console.log('Wix client initialized');
+      console.log('[PDF Widget] ✅ Wix client initialized successfully');
+      console.log('[PDF Widget] Client object:', this.wixClient);
     } catch (err) {
-      console.error('Failed to initialize Wix client:', err);
+      console.error('[PDF Widget] ❌ Failed to initialize Wix client:', err);
+      console.error('[PDF Widget] Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
     }
   }
 
   async connectedCallback() {
+    console.log('[PDF Widget] connectedCallback() - Widget connected to DOM');
+    
     // Get access token asynchronously
     if (this.wixClient) {
+      console.log('[PDF Widget] Attempting to retrieve access token...');
       try {
+        console.log('[PDF Widget] Checking auth module:', this.wixClient.auth);
         this.accessToken = await this.wixClient.auth.getAccessToken();
-        console.log('Got Wix access token');
+        
+        if (this.accessToken) {
+          console.log('[PDF Widget] ✅ Successfully retrieved access token');
+          console.log('[PDF Widget] Token length:', this.accessToken.length);
+          console.log('[PDF Widget] Token preview:', this.accessToken.substring(0, 20) + '...');
+        } else {
+          console.warn('[PDF Widget] ⚠️ Access token is null/undefined');
+        }
       } catch (err) {
-        console.warn('Could not get access token:', err);
+        console.error('[PDF Widget] ❌ Failed to get access token:', err);
+        console.error('[PDF Widget] Error details:', {
+          message: err.message,
+          stack: err.stack,
+          name: err.name,
+          code: err.code
+        });
+        this.accessToken = null;
       }
+    } else {
+      console.warn('[PDF Widget] ⚠️ Wix client not initialized - cannot retrieve access token');
     }
     
+    console.log('[PDF Widget] Final access token state:', this.accessToken ? 'Present' : 'Missing');
+    
     this.updateConfig();
+    console.log('[PDF Widget] Config updated:', {
+      ...this.config,
+      accessToken: this.config.accessToken ? 'Present' : 'Missing'
+    });
+    
     this.render();
+    console.log('[PDF Widget] Widget rendered');
     
     // Listen for messages from settings panel
     window.addEventListener('message', this.handleMessage.bind(this));
+    console.log('[PDF Widget] Message listener attached');
   }
 
   disconnectedCallback() {
@@ -142,6 +181,8 @@ class PdfGeneratorButton extends HTMLElement {
       buttonCss: this.getAttribute('button-css') || '',
       accessToken: this.accessToken  // Pass access token for authentication
     };
+    
+    console.log('[PDF Widget] Config updated with access token:', this.accessToken ? 'Present' : 'Missing');
   }
 
   parseViewport() {
