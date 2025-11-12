@@ -44,8 +44,9 @@ function removeCookieBanner() {
  * @returns {void}
  */
 function removePdfGeneratorButton() {
-    const pdfGeneratorElements = document.querySelectorAll('pdf-generator-button');
-    pdfGeneratorElements.forEach(element => {
+    // Remove both Wix-specific and generic widget elements
+    const elements = document.querySelectorAll('pdf-generator-button, docuskribe-widget');
+    elements.forEach(element => {
         element.style.display = 'none';
         element.remove();
     });
