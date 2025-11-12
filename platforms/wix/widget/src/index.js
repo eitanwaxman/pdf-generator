@@ -25,7 +25,8 @@ class PdfGeneratorButton extends HTMLElement {
       'viewport-height',
       'button-text',
       'backend-url',
-      'data'
+      'data',
+      'button-css'
     ];
   }
 
@@ -138,6 +139,7 @@ class PdfGeneratorButton extends HTMLElement {
       buttonText: this.getAttribute('button-text') || 'Generate PDF',
       backendUrl: this.getAttribute('backend-url') || undefined,
       data: this.parseData(),
+      buttonCss: this.getAttribute('button-css') || '',
       accessToken: this.accessToken  // Pass access token for authentication
     };
   }
@@ -192,6 +194,9 @@ class PdfGeneratorButton extends HTMLElement {
   }
 
   getStyles() {
+    // Get custom button CSS from attribute (read directly to ensure it's current)
+    const customButtonCss = this.getAttribute('button-css') || '';
+    
     // Inline the CSS styles for shadow DOM
     return `
       :host {
@@ -272,6 +277,9 @@ class PdfGeneratorButton extends HTMLElement {
         border-radius: 4px;
         font-size: 14px;
       }
+
+      /* Apply custom button CSS if provided */
+      ${customButtonCss ? `.pdf-btn { ${customButtonCss} }` : ''}
     `;
   }
 }

@@ -39,6 +39,19 @@ function removeCookieBanner() {
 }
 
 /**
+ * Remove PDF generator button from the page
+ * This hides the button element before PDF/screenshot generation
+ * @returns {void}
+ */
+function removePdfGeneratorButton() {
+    const pdfGeneratorElements = document.querySelectorAll('pdf-generator-button');
+    pdfGeneratorElements.forEach(element => {
+        element.style.display = 'none';
+        element.remove();
+    });
+}
+
+/**
  * Add watermark to the page
  * @param {object} watermarkConfig - Watermark configuration object from constants
  * @returns {void}
@@ -289,6 +302,9 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
 
         // Emulate media type
         await page.emulateMediaType('screen');
+
+        // Remove PDF generator button from page (applies to all platforms)
+        await page.evaluate(removePdfGeneratorButton);
 
         // Apply platform-specific modifications
         if (platform === PLATFORMS.WIX) {
