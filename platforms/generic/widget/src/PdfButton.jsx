@@ -200,7 +200,7 @@ const PdfButton = ({ config }) => {
         filename = `document-${Date.now()}.pdf`;
       }
 
-      // Open file in new window/tab (works in iframes)
+      // Download file to user's device
       downloadBlob(blob, filename);
     } catch (err) {
       console.error('Error handling output:', err);
@@ -229,10 +229,13 @@ const PdfButton = ({ config }) => {
 
   const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob);
-    // Open blob in new window/tab - works in iframes
-    window.open(url, '_blank');
-    // Clean up the URL after a delay to allow the window to open
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const outputTypeLabel = config.outputType === 'screenshot' ? 'Screenshot' : 'PDF';
