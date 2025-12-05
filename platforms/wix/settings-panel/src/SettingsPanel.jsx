@@ -50,51 +50,138 @@ const SettingsPanel = () => {
     console.log('[Settings Panel] ========================================');
     console.log('[Settings Panel] Component mounted (useEffect)');
     console.log('[Settings Panel] ========================================');
-    console.log('[Settings Panel] Environment check:');
-    console.log('[Settings Panel]   - window.location:', window.location.href);
-    console.log('[Settings Panel]   - window.parent:', window.parent !== window);
-    console.log('[Settings Panel]   - window.top:', window.top !== window);
-    console.log('[Settings Panel]   - document.readyState:', document.readyState);
     
-    // Check if we're in Wix editor context
-    console.log('[Settings Panel] Wix context check:');
-    console.log('[Settings Panel]   - window.Wix available:', typeof window.Wix !== 'undefined');
-    if (typeof window.Wix !== 'undefined') {
-      console.log('[Settings Panel]   - window.Wix.Settings available:', typeof window.Wix.Settings !== 'undefined');
-    }
+    // Load current widget properties
+    const loadWidgetProperties = async () => {
+      try {
+        console.log('[Settings Panel] Loading current widget properties...');
+        
+        // Get editor host
+        const editorHost = editor.host();
+        console.log('[Settings Panel] ✅ editor.host() call successful');
+        
+        // Create client
+        const wixClient = createClient({
+          host: editorHost
+        });
+        console.log('[Settings Panel] ✅ Client created');
+        
+        // Get widget API
+        const widgetApi = wixClient.use(widget);
+        console.log('[Settings Panel] ✅ Widget API obtained');
+        console.log('[Settings Panel]   - widgetApi.getProp type:', typeof widgetApi?.getProp);
+        
+        // Read all current properties from the widget
+        const propertyKeys = [
+          'public-api-key',
+          'url-source',
+          'custom-url',
+          'pdf-format',
+          'pdf-margin-top',
+          'pdf-margin-right',
+          'pdf-margin-bottom',
+          'pdf-margin-left',
+          'form-factor',
+          'output-type',
+          'screenshot-type',
+          'screenshot-quality',
+          'screenshot-full-page',
+          'viewport-width',
+          'viewport-height',
+          'button-text',
+          'data'
+        ];
+        
+        console.log('[Settings Panel] Reading widget properties...');
+        const loadedSettings = {};
+        
+        for (const key of propertyKeys) {
+          try {
+            const value = await widgetApi.getProp(key);
+            console.log(`[Settings Panel]   - ${key} = ${value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : '(empty)'}`);
+            
+            // Map kebab-case property names to camelCase state keys
+            const stateKey = key.split('-').map((part, index) => 
+              index === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)
+            ).join('');
+            
+            // Handle special cases
+            if (key === 'public-api-key') {
+              loadedSettings.publicApiKey = value || '';
+            } else if (key === 'url-source') {
+              loadedSettings.urlSource = value || 'current';
+            } else if (key === 'custom-url') {
+              loadedSettings.customUrl = value || '';
+            } else if (key === 'pdf-format') {
+              loadedSettings.pdfFormat = value || 'A4';
+            } else if (key === 'pdf-margin-top') {
+              loadedSettings.pdfMarginTop = value || '50px';
+            } else if (key === 'pdf-margin-right') {
+              loadedSettings.pdfMarginRight = value || '50px';
+            } else if (key === 'pdf-margin-bottom') {
+              loadedSettings.pdfMarginBottom = value || '50px';
+            } else if (key === 'pdf-margin-left') {
+              loadedSettings.pdfMarginLeft = value || '50px';
+            } else if (key === 'form-factor') {
+              loadedSettings.formFactor = value || 'desktop';
+            } else if (key === 'output-type') {
+              loadedSettings.outputType = value || 'pdf';
+            } else if (key === 'screenshot-type') {
+              loadedSettings.screenshotType = value || 'png';
+            } else if (key === 'screenshot-quality') {
+              loadedSettings.screenshotQuality = value ? parseInt(value) : 90;
+            } else if (key === 'screenshot-full-page') {
+              loadedSettings.screenshotFullPage = value !== 'false' && value !== '';
+            } else if (key === 'viewport-width') {
+              loadedSettings.viewportWidth = value || '';
+            } else if (key === 'viewport-height') {
+              loadedSettings.viewportHeight = value || '';
+            } else if (key === 'button-text') {
+              loadedSettings.buttonText = value || 'Generate PDF';
+            } else if (key === 'data') {
+              // Parse data JSON string into dataParams array
+              if (value) {
+                try {
+                  const dataObj = JSON.parse(value);
+                  loadedSettings.dataParams = Object.entries(dataObj).map(([key, val]) => ({
+                    key,
+                    value: val
+                  }));
+                } catch (e) {
+                  console.warn('[Settings Panel] Failed to parse data:', e);
+                  loadedSettings.dataParams = [];
+                }
+              } else {
+                loadedSettings.dataParams = [];
+              }
+            }
+          } catch (propError) {
+            console.warn(`[Settings Panel] Failed to read ${key}:`, propError);
+          }
+        }
+        
+        // Update state with loaded values
+        console.log('[Settings Panel] ✅ Properties loaded, updating state...');
+        console.log('[Settings Panel] Loaded settings:', {
+          ...loadedSettings,
+          publicApiKey: loadedSettings.publicApiKey ? `${loadedSettings.publicApiKey.substring(0, 15)}...` : '(empty)'
+        });
+        
+        setSettings(prev => ({
+          ...prev,
+          ...loadedSettings
+        }));
+        
+        console.log('[Settings Panel] ✅ State updated with loaded properties');
+      } catch (error) {
+        console.error('[Settings Panel] ❌ Failed to load widget properties:', error);
+        console.error('[Settings Panel]   - Error message:', error.message);
+        console.error('[Settings Panel]   - Error stack:', error.stack);
+      }
+    };
     
-    // Test editor.host() availability
-    console.log('[Settings Panel] Testing editor.host()...');
-    try {
-      const host = editor.host();
-      console.log('[Settings Panel] ✅ editor.host() call successful');
-      console.log('[Settings Panel]   - host type:', typeof host);
-      console.log('[Settings Panel]   - host:', host);
-    } catch (error) {
-      console.error('[Settings Panel] ❌ editor.host() failed:', error);
-      console.error('[Settings Panel]   - Error message:', error.message);
-      console.error('[Settings Panel]   - Error stack:', error.stack);
-    }
-    
-    // Test widget API availability with client context
-    console.log('[Settings Panel] Testing widget API with client context...');
-    try {
-      const testClient = createClient({
-        host: editor.host()
-      });
-      console.log('[Settings Panel] ✅ Test client created successfully');
-      console.log('[Settings Panel]   - testClient type:', typeof testClient);
-      
-      const testWidgetApi = testClient.use(widget);
-      console.log('[Settings Panel] ✅ Widget API obtained successfully');
-      console.log('[Settings Panel]   - testWidgetApi type:', typeof testWidgetApi);
-      console.log('[Settings Panel]   - testWidgetApi:', testWidgetApi);
-      console.log('[Settings Panel]   - testWidgetApi.setProp type:', typeof testWidgetApi?.setProp);
-    } catch (error) {
-      console.error('[Settings Panel] ❌ Widget API test failed:', error);
-      console.error('[Settings Panel]   - Error message:', error.message);
-      console.error('[Settings Panel]   - Error stack:', error.stack);
-    }
+    // Load properties when component mounts
+    loadWidgetProperties();
     
     console.log('[Settings Panel] Component initialization complete');
     console.log('[Settings Panel] ========================================');
