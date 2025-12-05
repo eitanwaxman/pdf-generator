@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@wix/sdk';
 import { editor } from '@wix/editor';
 
+// Log SDK imports after module load
+console.log('[Settings Panel] ========================================');
+console.log('[Settings Panel] Initializing Settings Panel Module');
+console.log('[Settings Panel] ========================================');
+console.log('[Settings Panel] 📦 Wix SDK modules imported');
+console.log('[Settings Panel]   - createClient type:', typeof createClient);
+console.log('[Settings Panel]   - createClient:', createClient);
+console.log('[Settings Panel]   - editor type:', typeof editor);
+console.log('[Settings Panel]   - editor object:', editor);
+console.log('[Settings Panel]   - editor.host type:', typeof editor?.host);
+console.log('[Settings Panel]   - editor.widget type:', typeof editor?.widget);
+
 const PDF_FORMATS = ['A4', 'Letter', 'Legal', 'Tabloid', 'Ledger', 'A0', 'A1', 'A2', 'A3', 'A5', 'A6'];
 const FORM_FACTORS = [
   { value: 'desktop', label: 'Desktop' },
@@ -35,8 +47,59 @@ const SettingsPanel = () => {
   });
 
   useEffect(() => {
-    // Load existing settings if available (from widget attributes)
-    // In a real implementation, this could be fetched from the widget
+    console.log('[Settings Panel] ========================================');
+    console.log('[Settings Panel] Component mounted (useEffect)');
+    console.log('[Settings Panel] ========================================');
+    console.log('[Settings Panel] Environment check:');
+    console.log('[Settings Panel]   - window.location:', window.location.href);
+    console.log('[Settings Panel]   - window.parent:', window.parent !== window);
+    console.log('[Settings Panel]   - window.top:', window.top !== window);
+    console.log('[Settings Panel]   - document.readyState:', document.readyState);
+    
+    // Check if we're in Wix editor context
+    console.log('[Settings Panel] Wix context check:');
+    console.log('[Settings Panel]   - window.Wix available:', typeof window.Wix !== 'undefined');
+    if (typeof window.Wix !== 'undefined') {
+      console.log('[Settings Panel]   - window.Wix.Settings available:', typeof window.Wix.Settings !== 'undefined');
+    }
+    
+    // Test editor.host() availability
+    console.log('[Settings Panel] Testing editor.host()...');
+    try {
+      const host = editor.host();
+      console.log('[Settings Panel] ✅ editor.host() call successful');
+      console.log('[Settings Panel]   - host type:', typeof host);
+      console.log('[Settings Panel]   - host:', host);
+    } catch (error) {
+      console.error('[Settings Panel] ❌ editor.host() failed:', error);
+      console.error('[Settings Panel]   - Error message:', error.message);
+      console.error('[Settings Panel]   - Error stack:', error.stack);
+    }
+    
+    // Test widget API availability
+    console.log('[Settings Panel] Testing widget API...');
+    try {
+      const testClient = createClient({
+        host: editor.host(),
+        modules: { editor }
+      });
+      console.log('[Settings Panel] ✅ Test client created successfully');
+      console.log('[Settings Panel]   - testClient type:', typeof testClient);
+      console.log('[Settings Panel]   - testClient:', testClient);
+      
+      const testWidgetApi = testClient.use(editor.widget);
+      console.log('[Settings Panel] ✅ Widget API obtained successfully');
+      console.log('[Settings Panel]   - testWidgetApi type:', typeof testWidgetApi);
+      console.log('[Settings Panel]   - testWidgetApi:', testWidgetApi);
+      console.log('[Settings Panel]   - testWidgetApi.setProp type:', typeof testWidgetApi?.setProp);
+    } catch (error) {
+      console.error('[Settings Panel] ❌ Widget API test failed:', error);
+      console.error('[Settings Panel]   - Error message:', error.message);
+      console.error('[Settings Panel]   - Error stack:', error.stack);
+    }
+    
+    console.log('[Settings Panel] Component initialization complete');
+    console.log('[Settings Panel] ========================================');
   }, []);
 
   const handleChange = (field, value) => {
@@ -72,17 +135,78 @@ const SettingsPanel = () => {
   };
 
   const handleSave = async () => {
-    console.log('[Settings Panel] Saving settings...');
+    console.log('[Settings Panel] ========================================');
+    console.log('[Settings Panel] 🚀 handleSave() called');
+    console.log('[Settings Panel] ========================================');
+    console.log('[Settings Panel] Settings to save:', {
+      ...settings,
+      publicApiKey: settings.publicApiKey ? `${settings.publicApiKey.substring(0, 15)}...` : '(empty)'
+    });
     
     try {
-      // Initialize Wix SDK client
-      const wixClient = createClient({
-        host: editor.host()
-      });
+      // Step 1: Get editor host
+      console.log('[Settings Panel] Step 1: Getting editor.host()...');
+      let editorHost;
+      try {
+        editorHost = editor.host();
+        console.log('[Settings Panel] ✅ editor.host() successful');
+        console.log('[Settings Panel]   - host type:', typeof editorHost);
+        console.log('[Settings Panel]   - host:', editorHost);
+      } catch (hostError) {
+        console.error('[Settings Panel] ❌ editor.host() failed:', hostError);
+        console.error('[Settings Panel]   - Error message:', hostError.message);
+        console.error('[Settings Panel]   - Error stack:', hostError.stack);
+        throw new Error(`Failed to get editor host: ${hostError.message}`);
+      }
       
-      const widgetApi = wixClient.use(editor.widget);
+      // Step 2: Create Wix client
+      console.log('[Settings Panel] Step 2: Creating Wix client...');
+      console.log('[Settings Panel]   - createClient type:', typeof createClient);
+      console.log('[Settings Panel]   - modules.editor type:', typeof editor);
       
-      // Convert dataParams array to JSON string for storage
+      let wixClient;
+      try {
+        wixClient = createClient({
+          host: editorHost,
+          modules: { editor }
+        });
+        console.log('[Settings Panel] ✅ Wix client created successfully');
+        console.log('[Settings Panel]   - wixClient type:', typeof wixClient);
+        console.log('[Settings Panel]   - wixClient:', wixClient);
+        console.log('[Settings Panel]   - wixClient.use type:', typeof wixClient?.use);
+      } catch (clientError) {
+        console.error('[Settings Panel] ❌ createClient() failed:', clientError);
+        console.error('[Settings Panel]   - Error message:', clientError.message);
+        console.error('[Settings Panel]   - Error name:', clientError.name);
+        console.error('[Settings Panel]   - Error stack:', clientError.stack);
+        throw new Error(`Failed to create Wix client: ${clientError.message}`);
+      }
+      
+      // Step 3: Get widget API
+      console.log('[Settings Panel] Step 3: Getting widget API...');
+      console.log('[Settings Panel]   - editor.widget type:', typeof editor?.widget);
+      console.log('[Settings Panel]   - editor.widget:', editor?.widget);
+      
+      let widgetApi;
+      try {
+        widgetApi = wixClient.use(editor.widget);
+        console.log('[Settings Panel] ✅ Widget API obtained successfully');
+        console.log('[Settings Panel]   - widgetApi type:', typeof widgetApi);
+        console.log('[Settings Panel]   - widgetApi:', widgetApi);
+        console.log('[Settings Panel]   - widgetApi.setProp type:', typeof widgetApi?.setProp);
+        
+        if (!widgetApi || typeof widgetApi.setProp !== 'function') {
+          throw new Error('widgetApi.setProp is not a function');
+        }
+      } catch (apiError) {
+        console.error('[Settings Panel] ❌ wixClient.use(editor.widget) failed:', apiError);
+        console.error('[Settings Panel]   - Error message:', apiError.message);
+        console.error('[Settings Panel]   - Error stack:', apiError.stack);
+        throw new Error(`Failed to get widget API: ${apiError.message}`);
+      }
+      
+      // Step 4: Prepare data
+      console.log('[Settings Panel] Step 4: Preparing data...');
       const data = {};
       settings.dataParams.forEach(param => {
         if (param.key && param.value) {
@@ -90,31 +214,62 @@ const SettingsPanel = () => {
         }
       });
       const dataJson = Object.keys(data).length > 0 ? JSON.stringify(data) : '';
+      console.log('[Settings Panel] ✅ Data prepared');
+      console.log('[Settings Panel]   - dataParams count:', settings.dataParams.length);
+      console.log('[Settings Panel]   - data object keys:', Object.keys(data));
+      console.log('[Settings Panel]   - dataJson length:', dataJson.length);
 
-      // Set each property individually using setProp
-      // Properties are bound to custom element attributes (kebab-case)
-      await widgetApi.setProp('public-api-key', settings.publicApiKey || '');
-      await widgetApi.setProp('url-source', settings.urlSource || 'current');
-      await widgetApi.setProp('custom-url', settings.customUrl || '');
-      await widgetApi.setProp('pdf-format', settings.pdfFormat || 'A4');
-      await widgetApi.setProp('pdf-margin-top', settings.pdfMarginTop || '50px');
-      await widgetApi.setProp('pdf-margin-right', settings.pdfMarginRight || '50px');
-      await widgetApi.setProp('pdf-margin-bottom', settings.pdfMarginBottom || '50px');
-      await widgetApi.setProp('pdf-margin-left', settings.pdfMarginLeft || '50px');
-      await widgetApi.setProp('form-factor', settings.formFactor || 'desktop');
-      await widgetApi.setProp('output-type', settings.outputType || 'pdf');
-      await widgetApi.setProp('screenshot-type', settings.screenshotType || 'png');
-      await widgetApi.setProp('screenshot-quality', String(settings.screenshotQuality || 90));
-      await widgetApi.setProp('screenshot-full-page', String(settings.screenshotFullPage !== false));
-      await widgetApi.setProp('viewport-width', settings.viewportWidth || '');
-      await widgetApi.setProp('viewport-height', settings.viewportHeight || '');
-      await widgetApi.setProp('button-text', settings.buttonText || 'Generate PDF');
-      await widgetApi.setProp('data', dataJson);
+      // Step 5: Set properties
+      console.log('[Settings Panel] Step 5: Setting widget properties...');
+      const propertiesToSet = [
+        { key: 'public-api-key', value: settings.publicApiKey || '' },
+        { key: 'url-source', value: settings.urlSource || 'current' },
+        { key: 'custom-url', value: settings.customUrl || '' },
+        { key: 'pdf-format', value: settings.pdfFormat || 'A4' },
+        { key: 'pdf-margin-top', value: settings.pdfMarginTop || '50px' },
+        { key: 'pdf-margin-right', value: settings.pdfMarginRight || '50px' },
+        { key: 'pdf-margin-bottom', value: settings.pdfMarginBottom || '50px' },
+        { key: 'pdf-margin-left', value: settings.pdfMarginLeft || '50px' },
+        { key: 'form-factor', value: settings.formFactor || 'desktop' },
+        { key: 'output-type', value: settings.outputType || 'pdf' },
+        { key: 'screenshot-type', value: settings.screenshotType || 'png' },
+        { key: 'screenshot-quality', value: String(settings.screenshotQuality || 90) },
+        { key: 'screenshot-full-page', value: String(settings.screenshotFullPage !== false) },
+        { key: 'viewport-width', value: settings.viewportWidth || '' },
+        { key: 'viewport-height', value: settings.viewportHeight || '' },
+        { key: 'button-text', value: settings.buttonText || 'Generate PDF' },
+        { key: 'data', value: dataJson }
+      ];
+      
+      console.log('[Settings Panel]   - Total properties to set:', propertiesToSet.length);
+      
+      for (let i = 0; i < propertiesToSet.length; i++) {
+        const { key, value } = propertiesToSet[i];
+        try {
+          console.log(`[Settings Panel]   [${i + 1}/${propertiesToSet.length}] Setting ${key} = ${value.substring(0, 50)}${value.length > 50 ? '...' : ''}`);
+          await widgetApi.setProp(key, value);
+          console.log(`[Settings Panel]   ✅ ${key} set successfully`);
+        } catch (propError) {
+          console.error(`[Settings Panel]   ❌ Failed to set ${key}:`, propError);
+          console.error(`[Settings Panel]     - Error message:`, propError.message);
+          throw new Error(`Failed to set property ${key}: ${propError.message}`);
+        }
+      }
 
-      console.log('[Settings Panel] ✅ Settings saved successfully');
+      console.log('[Settings Panel] ========================================');
+      console.log('[Settings Panel] ✅ All settings saved successfully!');
+      console.log('[Settings Panel] ========================================');
       alert('Settings saved successfully!');
     } catch (error) {
-      console.error('[Settings Panel] ❌ Error saving settings:', error);
+      console.error('[Settings Panel] ========================================');
+      console.error('[Settings Panel] ❌ Error saving settings');
+      console.error('[Settings Panel] ========================================');
+      console.error('[Settings Panel] Error details:');
+      console.error('[Settings Panel]   - Error name:', error.name);
+      console.error('[Settings Panel]   - Error message:', error.message);
+      console.error('[Settings Panel]   - Error stack:', error.stack);
+      console.error('[Settings Panel]   - Full error object:', error);
+      console.error('[Settings Panel] ========================================');
       alert('Error saving settings: ' + error.message);
     }
   };
