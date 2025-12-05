@@ -11,6 +11,8 @@ import { Button } from './components/ui/button'
 import { Alert, AlertDescription } from './components/ui/alert'
 import { CheckCircle, XCircle } from 'lucide-react'
 import LandingView from './components/LandingView'
+import WixLandingView from './components/WixLandingView'
+import WixDocsView from './components/WixDocsView'
 import SEO from './components/SEO'
 import StructuredData, {
   generateOrganizationSchema,
@@ -25,7 +27,24 @@ const BASE_URL = 'https://docuskribe.com'
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('landing')
+  // Initialize activeTab from URL pathname immediately
+  const pathToTab = (pathname) => {
+    if (pathname.startsWith('/wix/docs')) return 'wix-docs'
+    if (pathname.startsWith('/wix')) return 'wix'
+    if (pathname.startsWith('/dashboard')) return 'dashboard'
+    if (pathname.startsWith('/docs')) return 'docs'
+    if (pathname.startsWith('/plans')) return 'plans'
+    if (pathname.startsWith('/settings')) return 'settings'
+    if (pathname.startsWith('/widget')) return 'widget'
+    if (pathname.startsWith('/auth')) return 'auth'
+    return 'landing'
+  }
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return pathToTab(window.location.pathname)
+    }
+    return 'landing'
+  })
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [apiKey, setApiKey] = useState(null)
@@ -34,22 +53,13 @@ function App() {
 
   useEffect(() => {
     // Initialize tab from path, then fallback to localStorage
-    const pathToTab = (pathname) => {
-      if (pathname.startsWith('/dashboard')) return 'dashboard'
-      if (pathname.startsWith('/docs')) return 'docs'
-      if (pathname.startsWith('/plans')) return 'plans'
-      if (pathname.startsWith('/settings')) return 'settings'
-      if (pathname.startsWith('/widget')) return 'widget'
-      if (pathname.startsWith('/auth')) return 'auth'
-      return 'landing'
-    }
     const initialTabFromPath = pathToTab(window.location.pathname)
-    if (initialTabFromPath) {
+    if (initialTabFromPath && initialTabFromPath !== activeTab) {
       setActiveTab(initialTabFromPath)
-    } else {
+    } else if (!initialTabFromPath || initialTabFromPath === 'landing') {
       try {
         const savedTab = localStorage.getItem('activeTab')
-        if (savedTab) setActiveTab(savedTab)
+        if (savedTab && savedTab !== 'landing') setActiveTab(savedTab)
       } catch {}
     }
 
@@ -155,6 +165,8 @@ function App() {
         // Reflect active tab in the URL path
         const tabToPath = {
           landing: '/',
+          wix: '/wix',
+          'wix-docs': '/wix/docs',
           auth: '/auth',
           dashboard: '/dashboard',
           docs: '/docs',
@@ -180,6 +192,8 @@ function App() {
     if (activeTab) {
       const pageTitles = {
         landing: 'Landing Page',
+        wix: 'PDF Generator for Wix',
+        'wix-docs': 'Wix Setup Guide',
         dashboard: 'Dashboard',
         docs: 'Documentation',
         plans: 'Pricing Plans',
@@ -336,6 +350,26 @@ function App() {
           noindex: true,
           nofollow: true,
         }
+      case 'wix':
+        return {
+          title: 'PDF Generator for Wix - Add PDF Generation to Your Wix Site',
+          description: 'Install the PDF Generator app from Wix App Market. Let visitors convert pages to PDFs or take screenshots with one click. Free to install, easy to configure.',
+          keywords: 'Wix app, PDF generator Wix, Wix PDF widget, screenshot Wix, Wix app market',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
+      case 'wix-docs':
+        return {
+          title: 'Wix Setup Guide - PDF Generator Installation & Configuration',
+          description: 'Complete step-by-step guide to install and configure the PDF Generator widget on your Wix site. Get started in minutes.',
+          keywords: 'Wix PDF generator setup, Wix widget configuration, Wix app installation guide',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
       default:
         return {
           title: 'Docuskribe - Generate PDFs and Screenshots from URLs',
@@ -371,6 +405,21 @@ function App() {
             { name: 'Pricing Plans', url: `${BASE_URL}/plans` },
           ]),
         ]
+      case 'wix':
+        return [
+          generateBreadcrumbSchema([
+            { name: 'Home', url: BASE_URL },
+            { name: 'Wix App', url: `${BASE_URL}/wix` },
+          ]),
+        ]
+      case 'wix-docs':
+        return [
+          generateBreadcrumbSchema([
+            { name: 'Home', url: BASE_URL },
+            { name: 'Wix App', url: `${BASE_URL}/wix` },
+            { name: 'Setup Guide', url: `${BASE_URL}/wix/docs` },
+          ]),
+        ]
       default:
         return null
     }
@@ -381,6 +430,34 @@ function App() {
 
   // Not logged in - show landing by default, with options to auth/docs
   if (!session) {
+    if (activeTab === 'wix') {
+      return (
+        <>
+          <SEO {...seoConfig} />
+          {structuredData && <StructuredData data={structuredData} />}
+          <WixLandingView 
+            onGetStarted={() => setActiveTab('auth')}
+            onViewDocs={() => setActiveTab('wix-docs')}
+          />
+        </>
+      )
+    }
+    if (activeTab === 'wix-docs') {
+      return (
+        <>
+          <SEO {...seoConfig} />
+          {structuredData && <StructuredData data={structuredData} />}
+          <div className="min-h-screen bg-background">
+            <div className="container max-w-4xl mx-auto px-4 py-8">
+              <div className="flex justify-between items-center mb-6">
+                <Button variant="ghost" onClick={() => setActiveTab('wix')}>← Back to Wix App</Button>
+              </div>
+              <WixDocsView onGetStarted={() => setActiveTab('auth')} />
+            </div>
+          </div>
+        </>
+      )
+    }
     if (activeTab === 'landing') {
       return (
         <>
@@ -390,6 +467,7 @@ function App() {
             onGetStarted={() => setActiveTab('auth')}
             onViewDocs={() => setActiveTab('docs')}
             onViewPlans={() => setActiveTab('auth')}
+            onViewWix={() => setActiveTab('wix')}
           />
         </>
       )
@@ -399,23 +477,21 @@ function App() {
         <SEO {...seoConfig} />
         {structuredData && <StructuredData data={structuredData} />}
         <div className="min-h-screen bg-background">
-          <div className="container max-w-4xl mx-auto px-4 py-8">
-            <div className="flex justify-between items-center mb-6">
-              <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to landing</Button>
+          {activeTab === 'docs' ? (
+            <div className="w-full px-4 py-8">
+              <div className="flex justify-between items-center mb-6">
+                <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to Home</Button>
+              </div>
+              <DocsView isLoggedIn={false} onGetStarted={() => setActiveTab('auth')} />
             </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="auth">Sign In</TabsTrigger>
-                <TabsTrigger value="docs">Documentation</TabsTrigger>
-              </TabsList>
-              <TabsContent value="auth">
-                <AuthView />
-              </TabsContent>
-              <TabsContent value="docs">
-                <DocsView isLoggedIn={false} onGetStarted={() => setActiveTab('auth')} />
-              </TabsContent>
-            </Tabs>
-          </div>
+          ) : (
+            <div className="container max-w-4xl mx-auto px-4 py-8">
+              <div className="flex justify-between items-center mb-6">
+                <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to Home</Button>
+              </div>
+              <AuthView />
+            </div>
+          )}
         </div>
       </>
     )
@@ -427,7 +503,7 @@ function App() {
       <SEO {...seoConfig} />
       {structuredData && <StructuredData data={structuredData} />}
       <div className="min-h-screen bg-background">
-      <div className="container max-w-6xl mx-auto px-4 py-8">
+      <div className={`${activeTab === 'docs' ? 'w-full' : 'container max-w-6xl mx-auto'} px-4 py-8`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>

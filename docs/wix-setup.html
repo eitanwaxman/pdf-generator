@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wix Setup Guide - PDF Generator Installation & Configuration</title>
+    <meta name="description" content="Complete step-by-step guide to install and configure the PDF Generator widget on your Wix site. Get started in minutes.">
+    <meta name="keywords" content="Wix PDF generator setup, Wix widget configuration, Wix app installation guide">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f9fafb;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        header p {
+            font-size: 1.125rem;
+            opacity: 0.9;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .card-header .number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        
+        .card p {
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+        
+        .card ol, .card ul {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .card li {
+            margin-bottom: 8px;
+            color: #4b5563;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.2s;
+            margin: 8px 8px 8px 0;
+        }
+        
+        .btn:hover {
+            background: #1d4ed8;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #2563eb;
+            color: #2563eb;
+        }
+        
+        .btn-outline:hover {
+            background: #eff6ff;
+        }
+        
+        .alert {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        
+        .alert strong {
+            color: #92400e;
+        }
+        
+        .alert-info {
+            background: #dbeafe;
+            border-left-color: #3b82f6;
+        }
+        
+        .alert-info strong {
+            color: #1e40af;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+        
+        .highlight-box {
+            border-left: 4px solid #2563eb;
+            padding: 16px;
+            background: #eff6ff;
+            margin: 16px 0;
+        }
+        
+        .highlight-box h4 {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1e40af;
+        }
+        
+        .highlight-box p {
+            color: #1e3a8a;
+            font-size: 0.875rem;
+        }
+        
+        .faq-item {
+            margin-bottom: 24px;
+        }
+        
+        .faq-item h4 {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .faq-item p {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .cta-section {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            color: white;
+            padding: 48px 24px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .cta-section h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .cta-section p {
+            font-size: 1.125rem;
+            margin-bottom: 24px;
+            opacity: 0.9;
+        }
+        
+        .cta-section .btn {
+            background: white;
+            color: #2563eb;
+        }
+        
+        .cta-section .btn:hover {
+            background: #f0f9ff;
+        }
+        
+        footer {
+            background: #1f2937;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-top: 60px;
+        }
+        
+        footer a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PDF Generator for Wix - Setup Guide</h1>
+            <p>Complete step-by-step instructions to install and configure the PDF Generator widget on your Wix site</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <a href="wix-landing.html" class="back-link">← Back to Wix App</a>
+
+        <!-- Quick Start -->
+        <div class="card" style="background: linear-gradient(135deg, #dbeafe 0%, #e9d5ff 100%); border: 2px solid #2563eb;">
+            <div class="card-header">
+                <span>🚀</span>
+                <span>Quick Start</span>
+            </div>
+            <p><strong>Get up and running in 5 minutes</strong></p>
+            
+            <div style="margin-top: 24px;">
+                <div style="display: flex; align-items: start; gap: 16px; margin-bottom: 24px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">1</div>
+                    <div>
+                        <h4 style="font-weight: 600; margin-bottom: 8px;">Install from Wix App Market</h4>
+                        <p style="margin-bottom: 12px;">Go to the Wix App Market and search for "PDF Generator" or use the direct link below.</p>
+                        <a href="https://wix.to/MMv9cAJ" target="_blank" rel="noopener noreferrer" class="btn">Install from Wix App Market</a>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: start; gap: 16px; margin-bottom: 24px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #10b981; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">2</div>
+                    <div>
+                        <h4 style="font-weight: 600; margin-bottom: 8px;">Get Your API Key</h4>
+                        <p style="margin-bottom: 12px;">Sign up for a free DocuSkribe account and get your public API key from the dashboard.</p>
+                        <a href="https://www.docuskribe.com/dashboard" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Get API Key (Free)</a>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: start; gap: 16px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #7c3aed; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">3</div>
+                    <div>
+                        <h4 style="font-weight: 600; margin-bottom: 8px;">Configure in Wix Editor</h4>
+                        <p>Add the widget to your page, open the settings panel, and paste your API key. Customize the button text and PDF options as needed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 1 -->
+        <div class="card">
+            <div class="card-header">
+                <span class="number">1</span>
+                <span>Installing the App</span>
+            </div>
+            <p>To install the PDF Generator app on your Wix site:</p>
+            <ol>
+                <li>Log in to your Wix account and open your site in the Wix Editor</li>
+                <li>Click on <strong>Add</strong> → <strong>App</strong> in the left sidebar</li>
+                <li>Search for "PDF Generator" or click the link below to go directly to the app</li>
+                <li>Click <strong>Add to Site</strong> to install the app</li>
+                <li>The app will be added to your site and you'll see it in your Apps list</li>
+            </ol>
+            <div style="margin-top: 16px;">
+                <a href="https://wix.to/MMv9cAJ" target="_blank" rel="noopener noreferrer" class="btn">Install PDF Generator from Wix App Market</a>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="card">
+            <div class="card-header">
+                <span class="number">2</span>
+                <span>Getting Your API Key</span>
+            </div>
+            <p>The PDF Generator widget uses DocuSkribe's API to generate PDFs. You'll need a free API key to get started.</p>
+            
+            <div class="highlight-box">
+                <h4>Create a DocuSkribe Account</h4>
+                <ol>
+                    <li>Visit <a href="https://www.docuskribe.com" target="_blank" rel="noopener noreferrer" style="color: #2563eb;">www.docuskribe.com</a></li>
+                    <li>Click <strong>Get Started</strong> or <strong>Sign Up</strong></li>
+                    <li>Create your account (it's free!)</li>
+                    <li>Once logged in, go to your Dashboard</li>
+                    <li>Find your <strong>Public API Key</strong> (starts with <code style="background: white; padding: 2px 6px; border-radius: 4px;">pk_live_</code>)</li>
+                    <li>Copy the API key - you'll need it in the next step</li>
+                </ol>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Important:</strong> Make sure to add your Wix domain to the authorized domains list in your DocuSkribe dashboard. 
+                This ensures the API key works correctly with your Wix site.
+            </div>
+
+            <div style="margin-top: 16px;">
+                <a href="https://www.docuskribe.com/dashboard" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Open DocuSkribe Dashboard</a>
+                <a href="https://www.docuskribe.com" target="_blank" rel="noopener noreferrer" class="btn">Sign Up for DocuSkribe</a>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="card">
+            <div class="card-header">
+                <span class="number">3</span>
+                <span>Adding the Widget to Your Page</span>
+            </div>
+            <p>Once the app is installed, you can add the PDF Generator widget to any page:</p>
+            <ol>
+                <li>In the Wix Editor, navigate to the page where you want to add the PDF button</li>
+                <li>Click <strong>Add</strong> → <strong>App</strong> in the left sidebar</li>
+                <li>Find <strong>PDF Generator</strong> in your installed apps</li>
+                <li>Click on it to add the widget to your page</li>
+                <li>The widget will appear as a button on your page</li>
+            </ol>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="card">
+            <div class="card-header">
+                <span class="number">4</span>
+                <span>Configuring the Widget</span>
+            </div>
+            <p>Click on the widget in the editor to open the settings panel. Here's what you can configure:</p>
+
+            <div style="margin-top: 24px;">
+                <div class="highlight-box" style="border-left-color: #2563eb;">
+                    <h4>API Configuration</h4>
+                    <p>Paste your public API key from DocuSkribe dashboard here. Make sure your Wix domain is added to authorized domains.</p>
+                    <div class="code-block">pk_live_...</div>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #10b981;">
+                    <h4>PDF Source</h4>
+                    <p>Choose whether to generate PDF from the current page URL or a custom URL. Most users select "Current Page URL" to let visitors download the page they're viewing.</p>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #7c3aed;">
+                    <h4>Output Type</h4>
+                    <p>Select <strong>PDF</strong> to generate PDF documents or <strong>Screenshot</strong> to capture images. PDFs are great for documents, screenshots are perfect for quick captures.</p>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #ea580c;">
+                    <h4>PDF Format (PDF only)</h4>
+                    <p>Choose the page size: A4, Letter, Legal, Tabloid, or other standard formats. A4 is the most common for international use, Letter for US documents.</p>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #dc2626;">
+                    <h4>PDF Margins (PDF only)</h4>
+                    <p>Set margins for your PDFs. Default is 50px on all sides. You can use CSS units like px, cm, or in (e.g., "1in", "2cm", "20px").</p>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #4f46e5;">
+                    <h4>Form Factor</h4>
+                    <p>Choose <strong>Desktop</strong> for standard web rendering or <strong>Mobile</strong> for mobile-optimized views. This affects how the page is rendered before conversion.</p>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #ec4899;">
+                    <h4>Button Text</h4>
+                    <p>Customize the text on the button. Default is "Generate PDF" but you can change it to "Download PDF", "Save as PDF", or anything you prefer.</p>
+                </div>
+
+                <div class="highlight-box" style="border-left-color: #eab308;">
+                    <h4>Query Parameters (Advanced)</h4>
+                    <p>Add custom query parameters to the URL before conversion. Useful for passing dynamic data or filtering content.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="card">
+            <div class="card-header">
+                <span class="number">5</span>
+                <span>Publishing Your Site</span>
+            </div>
+            <p>Once you've configured the widget:</p>
+            <ol>
+                <li>Review your settings to make sure everything is correct</li>
+                <li>Click <strong>Publish</strong> in the top right of the Wix Editor</li>
+                <li>Visit your live site and test the PDF generation button</li>
+                <li>Click the button to generate a PDF and verify it works correctly</li>
+            </ol>
+            <div class="alert alert-info" style="margin-top: 16px;">
+                <strong>Tip:</strong> Test the widget on your published site before sharing it with visitors. 
+                Make sure your API key is valid and your domain is authorized in DocuSkribe.
+            </div>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div class="card" style="border: 2px solid #f59e0b; background: #fef3c7;">
+            <div class="card-header">
+                <span>🔧</span>
+                <span>Troubleshooting</span>
+            </div>
+            <p style="color: #92400e; margin-bottom: 16px;"><strong>Common issues and solutions</strong></p>
+
+            <div style="margin-bottom: 24px;">
+                <h4 style="font-weight: 600; margin-bottom: 8px; color: #92400e;">PDF generation fails or shows an error</h4>
+                <ul>
+                    <li>Verify your API key is correct and starts with <code style="background: white; padding: 2px 6px; border-radius: 4px;">pk_live_</code></li>
+                    <li>Check that your Wix domain is added to authorized domains in DocuSkribe dashboard</li>
+                    <li>Ensure you have credits remaining in your DocuSkribe account</li>
+                    <li>Check the browser console for detailed error messages</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <h4 style="font-weight: 600; margin-bottom: 8px; color: #92400e;">Button doesn't appear on the page</h4>
+                <ul>
+                    <li>Make sure you've added the widget to the page in the Wix Editor</li>
+                    <li>Check that the widget isn't hidden or positioned off-screen</li>
+                    <li>Try removing and re-adding the widget</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <h4 style="font-weight: 600; margin-bottom: 8px; color: #92400e;">PDF format or margins look wrong</h4>
+                <ul>
+                    <li>Double-check your PDF format selection (A4, Letter, etc.)</li>
+                    <li>Verify margin values are in correct format (e.g., "50px", "1in", "2cm")</li>
+                    <li>Test with different margin values to find what works best for your content</li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 style="font-weight: 600; margin-bottom: 8px; color: #92400e;">Need more help?</h4>
+                <p style="color: #92400e; margin-bottom: 12px;">If you're still experiencing issues, check the DocuSkribe documentation or contact support.</p>
+                <a href="https://www.docuskribe.com/docs" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="border-color: #f59e0b; color: #92400e;">View Full Documentation</a>
+                <a href="https://www.docuskribe.com/dashboard" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="border-color: #f59e0b; color: #92400e;">Contact Support</a>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="card">
+            <div class="card-header">
+                <span>❓</span>
+                <span>Frequently Asked Questions</span>
+            </div>
+
+            <div class="faq-item">
+                <h4>Is the app free to use?</h4>
+                <p>The app itself is free to install from the Wix App Market. PDF generation is powered by DocuSkribe, which offers a generous free tier. You can upgrade to a paid plan if you need more credits.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>Do I need coding knowledge?</h4>
+                <p>No! The widget is fully configurable through the Wix Editor settings panel. You just need to paste your API key and adjust the settings as needed.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>Can I customize the button appearance?</h4>
+                <p>Yes! You can customize the button text in the settings. For advanced styling, you can use Wix's design tools to style the widget container.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>What file formats are supported?</h4>
+                <p>The widget can generate PDFs in various formats (A4, Letter, Legal, etc.) and screenshots in PNG, JPEG, or WebP formats.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>Is my data secure?</h4>
+                <p>Yes. PDFs are generated server-side and delivered directly to users. No data is stored permanently, and your API keys are secure.</p>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="cta-section">
+            <h2>Ready to Get Started?</h2>
+            <p>Install the PDF Generator app and enhance your Wix site today</p>
+            <div>
+                <a href="https://wix.to/MMv9cAJ" target="_blank" rel="noopener noreferrer" class="btn">Install from Wix App Market</a>
+                <a href="https://www.docuskribe.com" target="_blank" rel="noopener noreferrer" class="btn" style="background: rgba(255,255,255,0.2); border: 2px solid white;">Get Your Free API Key</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 DocuSkribe. All rights reserved.</p>
+            <p style="margin-top: 8px;">
+                <a href="https://www.docuskribe.com">DocuSkribe</a> | 
+                <a href="https://www.docuskribe.com/docs">Documentation</a> | 
+                <a href="https://www.docuskribe.com/dashboard">Dashboard</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
+

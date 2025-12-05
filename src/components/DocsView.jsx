@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
+import { Menu, X } from 'lucide-react'
 import { Card, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select } from './ui/select'
 import { Alert, AlertDescription } from './ui/alert'
-import { Copy, Check, Play, ExternalLink } from 'lucide-react'
+import { Copy, Check, Play, ExternalLink, Code, Package, Wrench } from 'lucide-react'
+import WixDocsView from './WixDocsView'
 import Prism from 'prismjs'
 import 'prismjs/components/prism-bash'
 import 'prismjs/components/prism-json'
@@ -382,22 +384,22 @@ console.log(data);`
   }
   
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 border-2 shadow-sm hover:shadow-md transition-all duration-200">
       <CardContent className="pt-6">
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`${methodColors[method]} text-white px-3 py-1 rounded text-sm font-bold`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <span className={`${methodColors[method]} text-white px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide shadow-sm`}>
                   {method}
                 </span>
-                <code className="text-lg font-mono">{path}</code>
+                <code className="text-base font-mono text-foreground break-all">{path}</code>
               </div>
-              <h3 className="text-xl font-semibold">{title}</h3>
-              <p className="text-muted-foreground text-sm mt-1">{description}</p>
+              <h3 className="text-2xl font-semibold mb-2">{title}</h3>
+              <p className="text-muted-foreground leading-relaxed">{description}</p>
             </div>
-            <Button onClick={handleTryIt} disabled={trying} size="sm" className="ml-4">
+            <Button onClick={handleTryIt} disabled={trying} size="sm" className="ml-4 flex-shrink-0 shadow-sm hover:shadow-md transition-shadow">
               <Play className="h-4 w-4 mr-2" />
               {trying ? 'Testing...' : 'Try It'}
             </Button>
@@ -625,30 +627,39 @@ console.log(data);`
 // API Documentation Component
 function ApiDocs({ apiKey, isLoggedIn }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-12">
       {/* Header */}
-      <Card className="bg-gradient-to-r from-primary to-purple-600 text-primary-foreground">
-        <CardContent className="py-12 text-center">
-          <h1 className="text-4xl font-bold mb-2">Docuskribe API</h1>
-          <p className="text-lg text-primary-foreground/90">
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+            Docuskribe API
+          </h1>
+          <p className="text-xl text-muted-foreground leading-relaxed">
             Convert any website to PDF or screenshot with a simple API call
           </p>
-          <p className="text-sm mt-4 text-primary-foreground/80">
-            Base URL: <code className="bg-black/20 px-2 py-1 rounded">{window.location.origin}/api/v1</code>
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+        <Card className="bg-gradient-to-r from-primary to-purple-600 text-primary-foreground border-0 shadow-lg">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-sm text-primary-foreground/90 mb-2 font-medium">Base URL</p>
+                <code className="bg-black/20 px-3 py-1.5 rounded-md text-sm font-mono">{window.location.origin}/api/v1</code>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       
       {/* Authentication */}
-      <Card>
+      <Card className="border-2 shadow-sm">
         <CardContent className="pt-6">
           <h2 className="text-2xl font-bold mb-3">Authentication</h2>
-          <p className="text-muted-foreground mb-4">
-            All API requests require an API key. Include your API key in the <code className="bg-muted px-2 py-1 rounded">x-api-key</code> header.
+          <p className="text-muted-foreground mb-4 leading-relaxed">
+            All API requests require an API key. Include your API key in the <code className="bg-muted px-2 py-1 rounded text-sm font-mono">x-api-key</code> header.
           </p>
           {isLoggedIn && apiKey ? (
-            <Alert>
-              <AlertDescription>
+            <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+              <AlertDescription className="text-green-800 dark:text-green-200">
                 ✅ Your API key is automatically populated in the examples below
               </AlertDescription>
             </Alert>
@@ -662,7 +673,9 @@ function ApiDocs({ apiKey, isLoggedIn }) {
         </CardContent>
       </Card>
       
-      <h2 className="text-2xl font-bold mt-8">Jobs</h2>
+      <div className="pt-4">
+        <h2 className="text-3xl font-bold mb-6">Endpoints</h2>
+      </div>
       
       {/* POST /api/v1/jobs */}
       <EndpointSection
@@ -743,6 +756,42 @@ function ApiDocs({ apiKey, isLoggedIn }) {
         apiKey={apiKey}
         isLoggedIn={isLoggedIn}
       />
+
+      {/* Wix App Section */}
+      <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-2">Using Wix?</h2>
+              <p className="text-muted-foreground mb-4">
+                Install our Wix app to add PDF generation directly to your Wix site. 
+                No API integration needed - just install and configure in the Wix Editor.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button 
+                  onClick={() => window.location.href = '/wix'}
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Wix App
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
+                >
+                  Install from Wix App Market
+                </Button>
+              </div>
+            </div>
+            <div className="text-center md:text-right">
+              <div className="inline-block px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold mb-2">
+                Wix App Market
+              </div>
+              <p className="text-sm text-muted-foreground">Free to install</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -752,69 +801,115 @@ function WidgetDocs({ onGetStarted }) {
   return <EmbedDocsView onGetStarted={onGetStarted} />
 }
 
+// Wix Documentation Component
+function WixDocsSection({ onGetStarted }) {
+  return <WixDocsView onGetStarted={onGetStarted} />
+}
+
 export default function DocsView({ apiKey, isLoggedIn, onGetStarted }) {
   const [activeSection, setActiveSection] = useState('api')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  
+  const navItems = [
+    { id: 'api', label: 'API Reference', icon: Code },
+    { id: 'widget', label: 'Widget / Embed', icon: Package },
+    { id: 'wix', label: 'Wix App', icon: Wrench },
+  ]
   
   return (
-    <div className="space-y-4">
-      {/* Side Navigation - Horizontal on mobile, Vertical on desktop */}
-      <div className="flex gap-2 md:hidden">
-        <button
-          onClick={() => setActiveSection('api')}
-          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
-            activeSection === 'api'
-              ? 'bg-primary text-primary-foreground font-semibold'
-              : 'hover:bg-muted'
-          }`}
-        >
-          API Reference
-        </button>
-        <button
-          onClick={() => setActiveSection('widget')}
-          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
-            activeSection === 'widget'
-              ? 'bg-primary text-primary-foreground font-semibold'
-              : 'hover:bg-muted'
-          }`}
-        >
-          Widget / Embed
-        </button>
-      </div>
-      
-      <div className="flex gap-6">
+    <div className="w-full min-h-screen">
+      <div className="flex gap-6 w-full">
         {/* Side Navigation - Desktop only */}
-        <aside className="hidden md:block w-48 flex-shrink-0">
-          <div className="sticky top-8 space-y-1">
-            <button
-              onClick={() => setActiveSection('api')}
-              className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
-                activeSection === 'api'
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'hover:bg-muted'
-              }`}
-            >
-              API Reference
-            </button>
-            <button
-              onClick={() => setActiveSection('widget')}
-              className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
-                activeSection === 'widget'
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'hover:bg-muted'
-              }`}
-            >
-              Widget / Embed
-            </button>
+        <aside className={`hidden md:block transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-56' : 'w-0'} flex-shrink-0 overflow-hidden border-r border-border/40`}>
+          <div className="sticky top-8 pr-4">
+            {sidebarOpen && (
+              <>
+                <div className="mb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="text-xs">Navigation</span>
+                  </Button>
+                </div>
+                <nav className="space-y-1">
+                  {navItems.map((item) => {
+                    const Icon = item.icon
+                    const isActive = activeSection === item.id
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSection(item.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                        <span className="text-sm">{item.label}</span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </>
+            )}
           </div>
         </aside>
         
         {/* Main Content */}
         <div className="flex-1 min-w-0">
-          {activeSection === 'api' ? (
-            <ApiDocs apiKey={apiKey} isLoggedIn={isLoggedIn} />
-          ) : (
-            <WidgetDocs onGetStarted={onGetStarted} />
+          {/* Mobile Navigation */}
+          <div className="md:hidden mb-6">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {navItems.map((item) => {
+                const Icon = item.icon
+                const isActive = activeSection === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="text-sm">{item.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Sidebar Toggle Button - Desktop (when sidebar is closed) */}
+          {!sidebarOpen && (
+            <div className="hidden md:flex items-center gap-2 mb-6">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="h-9 w-9"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+            </div>
           )}
+          
+          {/* Content Container with max-width for readability */}
+          <div className="max-w-5xl mx-auto">
+            {activeSection === 'api' ? (
+              <ApiDocs apiKey={apiKey} isLoggedIn={isLoggedIn} />
+            ) : activeSection === 'widget' ? (
+              <WidgetDocs onGetStarted={onGetStarted} />
+            ) : (
+              <WixDocsSection onGetStarted={onGetStarted} />
+            )}
+          </div>
         </div>
       </div>
     </div>

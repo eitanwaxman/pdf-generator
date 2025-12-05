@@ -158,41 +158,58 @@ export default function AuthView() {
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 disabled={loading}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && loginEmail && !loginPassword) {
+                    handleMagicLink()
+                  } else if (e.key === 'Enter' && loginPassword) {
+                    handleLogin()
+                  }
+                }}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="loginPassword">Password</Label>
-              <Input
-                id="loginPassword"
-                type="password"
-                placeholder="Enter password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                disabled={loading}
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-              />
-            </div>
-            <Button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full mt-4"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
             
-            <div className="mt-4 text-center">
-              <Button
-                variant="outline"
-                onClick={handleMagicLink}
-                disabled={loading}
-                className="w-full"
-              >
-                Send Magic Link
-              </Button>
-              <p className="text-sm text-muted-foreground mt-2">
-                Get a passwordless login link via email
-              </p>
-            </div>
+            {loginEmail && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleMagicLink}
+                  disabled={loading}
+                  className="w-full"
+                >
+                  Send Magic Link
+                </Button>
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="loginPassword">Password</Label>
+                  <Input
+                    id="loginPassword"
+                    type="password"
+                    placeholder="Enter password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    disabled={loading}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  />
+                </div>
+                
+                <Button
+                  onClick={handleLogin}
+                  disabled={loading || !loginPassword}
+                  className="w-full"
+                >
+                  {loading ? 'Logging in...' : 'Login'}
+                </Button>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="register" className="space-y-4">
@@ -205,41 +222,51 @@ export default function AuthView() {
                 value={registerEmail}
                 onChange={(e) => setRegisterEmail(e.target.value)}
                 disabled={loading}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && registerEmail && registerPassword && registerPasswordConfirm) {
+                    handleRegister()
+                  }
+                }}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="registerPassword">Password</Label>
-              <Input
-                id="registerPassword"
-                type="password"
-                placeholder="Min 8 characters"
-                value={registerPassword}
-                onChange={(e) => setRegisterPassword(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="registerPasswordConfirm">Confirm Password</Label>
-              <Input
-                id="registerPasswordConfirm"
-                type="password"
-                placeholder="Re-enter password"
-                value={registerPasswordConfirm}
-                onChange={(e) => setRegisterPasswordConfirm(e.target.value)}
-                disabled={loading}
-                onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
-              />
-            </div>
-            <Button
-              onClick={handleRegister}
-              disabled={loading}
-              className="w-full mt-4"
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </Button>
-            <p className="text-sm text-muted-foreground mt-4 text-center">
-              By registering, you'll get a free API key with 50 requests per day.
-            </p>
+            
+            {registerEmail && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="registerPassword">Password</Label>
+                  <Input
+                    id="registerPassword"
+                    type="password"
+                    placeholder="Min 8 characters"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="registerPasswordConfirm">Confirm Password</Label>
+                  <Input
+                    id="registerPasswordConfirm"
+                    type="password"
+                    placeholder="Re-enter password"
+                    value={registerPasswordConfirm}
+                    onChange={(e) => setRegisterPasswordConfirm(e.target.value)}
+                    disabled={loading}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                  />
+                </div>
+                <Button
+                  onClick={handleRegister}
+                  disabled={loading || !registerPassword || !registerPasswordConfirm}
+                  className="w-full"
+                >
+                  {loading ? 'Creating account...' : 'Create Account'}
+                </Button>
+                <p className="text-sm text-muted-foreground mt-4 text-center">
+                  By registering, you'll get a free API key with 50 requests per day.
+                </p>
+              </>
+            )}
           </TabsContent>
         </Tabs>
 
