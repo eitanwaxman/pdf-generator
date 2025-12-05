@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { widget } from '@wix/editor';
+import { createClient } from '@wix/sdk';
+import { editor, widget } from '@wix/editor';
 
 // Log SDK imports after module load
 console.log('[Settings Panel] ========================================');
 console.log('[Settings Panel] Initializing Settings Panel Module');
 console.log('[Settings Panel] ========================================');
 console.log('[Settings Panel] 📦 Wix SDK modules imported');
+console.log('[Settings Panel]   - createClient type:', typeof createClient);
+console.log('[Settings Panel]   - editor type:', typeof editor);
+console.log('[Settings Panel]   - editor.host type:', typeof editor?.host);
 console.log('[Settings Panel]   - widget type:', typeof widget);
 console.log('[Settings Panel]   - widget object:', widget);
 console.log('[Settings Panel]   - widget.setProp type:', typeof widget?.setProp);
@@ -59,13 +63,33 @@ const SettingsPanel = () => {
       console.log('[Settings Panel]   - window.Wix.Settings available:', typeof window.Wix.Settings !== 'undefined');
     }
     
-    // Test widget API availability
-    console.log('[Settings Panel] Testing widget API...');
+    // Test editor.host() availability
+    console.log('[Settings Panel] Testing editor.host()...');
     try {
+      const host = editor.host();
+      console.log('[Settings Panel] ✅ editor.host() call successful');
+      console.log('[Settings Panel]   - host type:', typeof host);
+      console.log('[Settings Panel]   - host:', host);
+    } catch (error) {
+      console.error('[Settings Panel] ❌ editor.host() failed:', error);
+      console.error('[Settings Panel]   - Error message:', error.message);
+      console.error('[Settings Panel]   - Error stack:', error.stack);
+    }
+    
+    // Test widget API availability with client context
+    console.log('[Settings Panel] Testing widget API with client context...');
+    try {
+      const testClient = createClient({
+        host: editor.host()
+      });
+      console.log('[Settings Panel] ✅ Test client created successfully');
+      console.log('[Settings Panel]   - testClient type:', typeof testClient);
+      
+      const testWidgetApi = testClient.use(widget);
       console.log('[Settings Panel] ✅ Widget API obtained successfully');
-      console.log('[Settings Panel]   - widget type:', typeof widget);
-      console.log('[Settings Panel]   - widget:', widget);
-      console.log('[Settings Panel]   - widget.setProp type:', typeof widget?.setProp);
+      console.log('[Settings Panel]   - testWidgetApi type:', typeof testWidgetApi);
+      console.log('[Settings Panel]   - testWidgetApi:', testWidgetApi);
+      console.log('[Settings Panel]   - testWidgetApi.setProp type:', typeof testWidgetApi?.setProp);
     } catch (error) {
       console.error('[Settings Panel] ❌ Widget API test failed:', error);
       console.error('[Settings Panel]   - Error message:', error.message);
@@ -118,8 +142,68 @@ const SettingsPanel = () => {
     });
     
     try {
-      // Prepare data
-      console.log('[Settings Panel] Step 1: Preparing data...');
+      // Step 1: Get editor host
+      console.log('[Settings Panel] Step 1: Getting editor.host()...');
+      let editorHost;
+      try {
+        editorHost = editor.host();
+        console.log('[Settings Panel] ✅ editor.host() successful');
+        console.log('[Settings Panel]   - host type:', typeof editorHost);
+        console.log('[Settings Panel]   - host:', editorHost);
+      } catch (hostError) {
+        console.error('[Settings Panel] ❌ editor.host() failed:', hostError);
+        console.error('[Settings Panel]   - Error message:', hostError.message);
+        console.error('[Settings Panel]   - Error stack:', hostError.stack);
+        throw new Error(`Failed to get editor host: ${hostError.message}`);
+      }
+      
+      // Step 2: Create Wix client
+      console.log('[Settings Panel] Step 2: Creating Wix client...');
+      console.log('[Settings Panel]   - createClient type:', typeof createClient);
+      
+      let wixClient;
+      try {
+        wixClient = createClient({
+          host: editorHost
+        });
+        console.log('[Settings Panel] ✅ Wix client created successfully');
+        console.log('[Settings Panel]   - wixClient type:', typeof wixClient);
+        console.log('[Settings Panel]   - wixClient:', wixClient);
+        console.log('[Settings Panel]   - wixClient.use type:', typeof wixClient?.use);
+      } catch (clientError) {
+        console.error('[Settings Panel] ❌ createClient() failed:', clientError);
+        console.error('[Settings Panel]   - Error message:', clientError.message);
+        console.error('[Settings Panel]   - Error name:', clientError.name);
+        console.error('[Settings Panel]   - Error stack:', clientError.stack);
+        throw new Error(`Failed to create Wix client: ${clientError.message}`);
+      }
+      
+      // Step 3: Get widget API (using named export 'widget', NOT 'editor.widget')
+      console.log('[Settings Panel] Step 3: Getting widget API...');
+      console.log('[Settings Panel]   - widget type:', typeof widget);
+      console.log('[Settings Panel]   - widget:', widget);
+      
+      let widgetApi;
+      try {
+        // Use the named export 'widget' with client.use() to provide context
+        widgetApi = wixClient.use(widget);
+        console.log('[Settings Panel] ✅ Widget API obtained successfully');
+        console.log('[Settings Panel]   - widgetApi type:', typeof widgetApi);
+        console.log('[Settings Panel]   - widgetApi:', widgetApi);
+        console.log('[Settings Panel]   - widgetApi.setProp type:', typeof widgetApi?.setProp);
+        
+        if (!widgetApi || typeof widgetApi.setProp !== 'function') {
+          throw new Error('widgetApi.setProp is not a function');
+        }
+      } catch (apiError) {
+        console.error('[Settings Panel] ❌ wixClient.use(widget) failed:', apiError);
+        console.error('[Settings Panel]   - Error message:', apiError.message);
+        console.error('[Settings Panel]   - Error stack:', apiError.stack);
+        throw new Error(`Failed to get widget API: ${apiError.message}`);
+      }
+      
+      // Step 4: Prepare data
+      console.log('[Settings Panel] Step 4: Preparing data...');
       const data = {};
       settings.dataParams.forEach(param => {
         if (param.key && param.value) {
@@ -132,8 +216,8 @@ const SettingsPanel = () => {
       console.log('[Settings Panel]   - data object keys:', Object.keys(data));
       console.log('[Settings Panel]   - dataJson length:', dataJson.length);
 
-      // Set properties
-      console.log('[Settings Panel] Step 2: Setting widget properties...');
+      // Step 5: Set properties
+      console.log('[Settings Panel] Step 5: Setting widget properties...');
       const propertiesToSet = [
         { key: 'public-api-key', value: settings.publicApiKey || '' },
         { key: 'url-source', value: settings.urlSource || 'current' },
@@ -160,7 +244,8 @@ const SettingsPanel = () => {
         const { key, value } = propertiesToSet[i];
         try {
           console.log(`[Settings Panel]   [${i + 1}/${propertiesToSet.length}] Setting ${key} = ${value.substring(0, 50)}${value.length > 50 ? '...' : ''}`);
-          await widget.setProp(key, value);
+          // Use widgetApi.setProp (bound to context), NOT widget.setProp (no context)
+          await widgetApi.setProp(key, value);
           console.log(`[Settings Panel]   ✅ ${key} set successfully`);
         } catch (propError) {
           console.error(`[Settings Panel]   ❌ Failed to set ${key}:`, propError);
