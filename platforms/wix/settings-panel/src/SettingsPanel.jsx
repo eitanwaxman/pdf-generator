@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@wix/sdk';
 import { editor, widget } from '@wix/editor';
 
@@ -26,6 +26,10 @@ const OUTPUT_TYPES = [
 const SCREENSHOT_TYPES = ['png', 'jpeg', 'webp'];
 
 const SettingsPanel = () => {
+  // Store widgetApi in ref so it's available throughout component lifecycle
+  const widgetApiRef = useRef(null);
+  const debounceTimersRef = useRef({});
+  
   const [settings, setSettings] = useState({
     publicApiKey: '',
     urlSource: 'current',
@@ -45,6 +49,81 @@ const SettingsPanel = () => {
     buttonText: 'Generate PDF',
     dataParams: []
   });
+
+  // Map React state field names to widget property keys (kebab-case)
+  const getWidgetPropertyKey = (fieldName) => {
+    const mapping = {
+      publicApiKey: 'public-api-key',
+      urlSource: 'url-source',
+      customUrl: 'custom-url',
+      pdfFormat: 'pdf-format',
+      pdfMarginTop: 'pdf-margin-top',
+      pdfMarginRight: 'pdf-margin-right',
+      pdfMarginBottom: 'pdf-margin-bottom',
+      pdfMarginLeft: 'pdf-margin-left',
+      formFactor: 'form-factor',
+      outputType: 'output-type',
+      screenshotType: 'screenshot-type',
+      screenshotQuality: 'screenshot-quality',
+      screenshotFullPage: 'screenshot-full-page',
+      viewportWidth: 'viewport-width',
+      viewportHeight: 'viewport-height',
+      buttonText: 'button-text'
+    };
+    return mapping[fieldName] || fieldName;
+  };
+
+  // Update widget property immediately (with debouncing for text inputs)
+  const updateWidgetProperty = useCallback(async (fieldName, value, debounceMs = 0) => {
+    if (!widgetApiRef.current) {
+      console.warn('[Settings Panel] Widget API not available yet');
+      return;
+    }
+
+    const widgetKey = getWidgetPropertyKey(fieldName);
+    let widgetValue = value;
+
+    // Convert value to string format expected by widget
+    if (fieldName === 'screenshotQuality') {
+      widgetValue = String(value);
+    } else if (fieldName === 'screenshotFullPage') {
+      widgetValue = String(value !== false);
+    } else if (fieldName === 'dataParams') {
+      // Convert dataParams array to JSON string
+      const data = {};
+      value.forEach(param => {
+        if (param.key && param.value) {
+          data[param.key] = param.value;
+        }
+      });
+      widgetValue = Object.keys(data).length > 0 ? JSON.stringify(data) : '';
+    } else {
+      widgetValue = value || '';
+    }
+
+    const updateFn = async () => {
+      try {
+        console.log(`[Settings Panel] Updating widget property: ${widgetKey} = ${widgetValue.length > 50 ? widgetValue.substring(0, 50) + '...' : widgetValue}`);
+        await widgetApiRef.current.setProp(widgetKey, widgetValue);
+        console.log(`[Settings Panel] ✅ ${widgetKey} updated successfully`);
+      } catch (error) {
+        console.error(`[Settings Panel] ❌ Failed to update ${widgetKey}:`, error);
+      }
+    };
+
+    // Debounce text inputs to avoid too many API calls
+    if (debounceMs > 0) {
+      // Clear existing timer for this field
+      if (debounceTimersRef.current[fieldName]) {
+        clearTimeout(debounceTimersRef.current[fieldName]);
+      }
+      // Set new timer
+      debounceTimersRef.current[fieldName] = setTimeout(updateFn, debounceMs);
+    } else {
+      // Update immediately for non-text inputs (selects, radios, checkboxes)
+      await updateFn();
+    }
+  }, []);
 
   useEffect(() => {
     console.log('[Settings Panel] ========================================');
@@ -66,9 +145,10 @@ const SettingsPanel = () => {
         });
         console.log('[Settings Panel] ✅ Client created');
         
-        // Get widget API
+        // Get widget API and store in ref
         const widgetApi = wixClient.use(widget);
-        console.log('[Settings Panel] ✅ Widget API obtained');
+        widgetApiRef.current = widgetApi; // Store for immediate updates
+        console.log('[Settings Panel] ✅ Widget API obtained and stored in ref');
         console.log('[Settings Panel]   - widgetApi.getProp type:', typeof widgetApi?.getProp);
         
         // Read all current properties from the widget
@@ -185,179 +265,65 @@ const SettingsPanel = () => {
     
     console.log('[Settings Panel] Component initialization complete');
     console.log('[Settings Panel] ========================================');
+    
+    // Cleanup: clear all debounce timers on unmount
+    return () => {
+      Object.values(debounceTimersRef.current).forEach(timer => {
+        if (timer) clearTimeout(timer);
+      });
+      debounceTimersRef.current = {};
+    };
   }, []);
 
-  const handleChange = (field, value) => {
+  // Handle field changes - update both state and widget immediately
+  const handleChange = useCallback((field, value, debounceMs = 300) => {
+    // Update React state for UI responsiveness
     setSettings(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+    
+    // Update widget immediately (with debouncing for text inputs)
+    updateWidgetProperty(field, value, debounceMs);
+  }, [updateWidgetProperty]);
 
-  const handleAddDataParam = () => {
-    setSettings(prev => ({
-      ...prev,
-      dataParams: [...prev.dataParams, { key: '', value: '' }]
-    }));
-  };
-
-  const handleRemoveDataParam = (index) => {
-    setSettings(prev => ({
-      ...prev,
-      dataParams: prev.dataParams.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleDataParamChange = (index, field, value) => {
+  const handleAddDataParam = useCallback(() => {
     setSettings(prev => {
-      const newDataParams = [...prev.dataParams];
-      newDataParams[index][field] = value;
+      const newDataParams = [...prev.dataParams, { key: '', value: '' }];
+      // Update widget with new dataParams
+      updateWidgetProperty('dataParams', newDataParams, 0);
       return {
         ...prev,
         dataParams: newDataParams
       };
     });
-  };
+  }, [updateWidgetProperty]);
 
-  const handleSave = async () => {
-    console.log('[Settings Panel] ========================================');
-    console.log('[Settings Panel] 🚀 handleSave() called');
-    console.log('[Settings Panel] ========================================');
-    console.log('[Settings Panel] Settings to save:', {
-      ...settings,
-      publicApiKey: settings.publicApiKey ? `${settings.publicApiKey.substring(0, 15)}...` : '(empty)'
+  const handleRemoveDataParam = useCallback((index) => {
+    setSettings(prev => {
+      const newDataParams = prev.dataParams.filter((_, i) => i !== index);
+      // Update widget with updated dataParams
+      updateWidgetProperty('dataParams', newDataParams, 0);
+      return {
+        ...prev,
+        dataParams: newDataParams
+      };
     });
-    
-    try {
-      // Step 1: Get editor host
-      console.log('[Settings Panel] Step 1: Getting editor.host()...');
-      let editorHost;
-      try {
-        editorHost = editor.host();
-        console.log('[Settings Panel] ✅ editor.host() successful');
-        console.log('[Settings Panel]   - host type:', typeof editorHost);
-        console.log('[Settings Panel]   - host:', editorHost);
-      } catch (hostError) {
-        console.error('[Settings Panel] ❌ editor.host() failed:', hostError);
-        console.error('[Settings Panel]   - Error message:', hostError.message);
-        console.error('[Settings Panel]   - Error stack:', hostError.stack);
-        throw new Error(`Failed to get editor host: ${hostError.message}`);
-      }
-      
-      // Step 2: Create Wix client
-      console.log('[Settings Panel] Step 2: Creating Wix client...');
-      console.log('[Settings Panel]   - createClient type:', typeof createClient);
-      
-      let wixClient;
-      try {
-        wixClient = createClient({
-          host: editorHost
-        });
-        console.log('[Settings Panel] ✅ Wix client created successfully');
-        console.log('[Settings Panel]   - wixClient type:', typeof wixClient);
-        console.log('[Settings Panel]   - wixClient:', wixClient);
-        console.log('[Settings Panel]   - wixClient.use type:', typeof wixClient?.use);
-      } catch (clientError) {
-        console.error('[Settings Panel] ❌ createClient() failed:', clientError);
-        console.error('[Settings Panel]   - Error message:', clientError.message);
-        console.error('[Settings Panel]   - Error name:', clientError.name);
-        console.error('[Settings Panel]   - Error stack:', clientError.stack);
-        throw new Error(`Failed to create Wix client: ${clientError.message}`);
-      }
-      
-      // Step 3: Get widget API (using named export 'widget', NOT 'editor.widget')
-      console.log('[Settings Panel] Step 3: Getting widget API...');
-      console.log('[Settings Panel]   - widget type:', typeof widget);
-      console.log('[Settings Panel]   - widget:', widget);
-      
-      let widgetApi;
-      try {
-        // Use the named export 'widget' with client.use() to provide context
-        widgetApi = wixClient.use(widget);
-        console.log('[Settings Panel] ✅ Widget API obtained successfully');
-        console.log('[Settings Panel]   - widgetApi type:', typeof widgetApi);
-        console.log('[Settings Panel]   - widgetApi:', widgetApi);
-        console.log('[Settings Panel]   - widgetApi.setProp type:', typeof widgetApi?.setProp);
-        
-        if (!widgetApi || typeof widgetApi.setProp !== 'function') {
-          throw new Error('widgetApi.setProp is not a function');
-        }
-      } catch (apiError) {
-        console.error('[Settings Panel] ❌ wixClient.use(widget) failed:', apiError);
-        console.error('[Settings Panel]   - Error message:', apiError.message);
-        console.error('[Settings Panel]   - Error stack:', apiError.stack);
-        throw new Error(`Failed to get widget API: ${apiError.message}`);
-      }
-      
-      // Step 4: Prepare data
-      console.log('[Settings Panel] Step 4: Preparing data...');
-      const data = {};
-      settings.dataParams.forEach(param => {
-        if (param.key && param.value) {
-          data[param.key] = param.value;
-        }
-      });
-      const dataJson = Object.keys(data).length > 0 ? JSON.stringify(data) : '';
-      console.log('[Settings Panel] ✅ Data prepared');
-      console.log('[Settings Panel]   - dataParams count:', settings.dataParams.length);
-      console.log('[Settings Panel]   - data object keys:', Object.keys(data));
-      console.log('[Settings Panel]   - dataJson length:', dataJson.length);
+  }, [updateWidgetProperty]);
 
-      // Step 5: Set properties
-      console.log('[Settings Panel] Step 5: Setting widget properties...');
-      const propertiesToSet = [
-        { key: 'public-api-key', value: settings.publicApiKey || '' },
-        { key: 'url-source', value: settings.urlSource || 'current' },
-        { key: 'custom-url', value: settings.customUrl || '' },
-        { key: 'pdf-format', value: settings.pdfFormat || 'A4' },
-        { key: 'pdf-margin-top', value: settings.pdfMarginTop || '50px' },
-        { key: 'pdf-margin-right', value: settings.pdfMarginRight || '50px' },
-        { key: 'pdf-margin-bottom', value: settings.pdfMarginBottom || '50px' },
-        { key: 'pdf-margin-left', value: settings.pdfMarginLeft || '50px' },
-        { key: 'form-factor', value: settings.formFactor || 'desktop' },
-        { key: 'output-type', value: settings.outputType || 'pdf' },
-        { key: 'screenshot-type', value: settings.screenshotType || 'png' },
-        { key: 'screenshot-quality', value: String(settings.screenshotQuality || 90) },
-        { key: 'screenshot-full-page', value: String(settings.screenshotFullPage !== false) },
-        { key: 'viewport-width', value: settings.viewportWidth || '' },
-        { key: 'viewport-height', value: settings.viewportHeight || '' },
-        { key: 'button-text', value: settings.buttonText || 'Generate PDF' },
-        { key: 'data', value: dataJson }
-      ];
-      
-      console.log('[Settings Panel]   - Total properties to set:', propertiesToSet.length);
-      
-      for (let i = 0; i < propertiesToSet.length; i++) {
-        const { key, value } = propertiesToSet[i];
-        try {
-          console.log(`[Settings Panel]   [${i + 1}/${propertiesToSet.length}] Setting ${key} = ${value.substring(0, 50)}${value.length > 50 ? '...' : ''}`);
-          // Use widgetApi.setProp (bound to context), NOT widget.setProp (no context)
-          await widgetApi.setProp(key, value);
-          console.log(`[Settings Panel]   ✅ ${key} set successfully`);
-        } catch (propError) {
-          console.error(`[Settings Panel]   ❌ Failed to set ${key}:`, propError);
-          console.error(`[Settings Panel]     - Error message:`, propError.message);
-          throw new Error(`Failed to set property ${key}: ${propError.message}`);
-        }
-      }
+  const handleDataParamChange = useCallback((index, field, value) => {
+    setSettings(prev => {
+      const newDataParams = [...prev.dataParams];
+      newDataParams[index][field] = value;
+      // Update widget with updated dataParams
+      updateWidgetProperty('dataParams', newDataParams, 300); // Debounce text changes
+      return {
+        ...prev,
+        dataParams: newDataParams
+      };
+    });
+  }, [updateWidgetProperty]);
 
-      console.log('[Settings Panel] ========================================');
-      console.log('[Settings Panel] ✅ All settings saved successfully!');
-      console.log('[Settings Panel] ========================================');
-      alert('Settings saved successfully!');
-    } catch (error) {
-      console.error('[Settings Panel] ========================================');
-      console.error('[Settings Panel] ❌ Error saving settings');
-      console.error('[Settings Panel] ========================================');
-      console.error('[Settings Panel] Error details:');
-      console.error('[Settings Panel]   - Error name:', error.name);
-      console.error('[Settings Panel]   - Error message:', error.message);
-      console.error('[Settings Panel]   - Error stack:', error.stack);
-      console.error('[Settings Panel]   - Full error object:', error);
-      console.error('[Settings Panel] ========================================');
-      alert('Error saving settings: ' + error.message);
-    }
-  };
 
   return (
     <div id="settings-root">
@@ -371,7 +337,7 @@ const SettingsPanel = () => {
           type="text"
           placeholder="pk_live_..."
           value={settings.publicApiKey}
-          onChange={(e) => handleChange('publicApiKey', e.target.value)}
+          onChange={(e) => handleChange('publicApiKey', e.target.value, 300)}
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -392,7 +358,7 @@ const SettingsPanel = () => {
               type="radio"
               value="current"
               checked={settings.urlSource === 'current'}
-              onChange={(e) => handleChange('urlSource', e.target.value)}
+              onChange={(e) => handleChange('urlSource', e.target.value, 0)}
               style={{ marginRight: '8px' }}
             />
             Current Page URL
@@ -403,8 +369,8 @@ const SettingsPanel = () => {
               type="radio"
               value="custom"
               checked={settings.urlSource === 'custom'}
-              onChange={(e) => handleChange('urlSource', e.target.value)}
-              style={{ marginRight: '8px' }}
+              onChange={(e) => handleChange('urlSource', e.target.value, 0)}
+            style={{ marginRight: '8px' }}
             />
             Custom URL
           </label>
@@ -415,7 +381,7 @@ const SettingsPanel = () => {
             type="text"
             placeholder="https://example.com"
             value={settings.customUrl}
-            onChange={(e) => handleChange('customUrl', e.target.value)}
+            onChange={(e) => handleChange('customUrl', e.target.value, 300)}
             style={{
               width: '100%',
               padding: '8px 12px',
@@ -431,7 +397,7 @@ const SettingsPanel = () => {
         <h3 className="settings-section-title">Output Type</h3>
         <select
           value={settings.outputType}
-          onChange={(e) => handleChange('outputType', e.target.value)}
+          onChange={(e) => handleChange('outputType', e.target.value, 0)}
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -452,7 +418,7 @@ const SettingsPanel = () => {
             <h3 className="settings-section-title">PDF Format</h3>
             <select
               value={settings.pdfFormat}
-              onChange={(e) => handleChange('pdfFormat', e.target.value)}
+              onChange={(e) => handleChange('pdfFormat', e.target.value, 0)}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -478,7 +444,7 @@ const SettingsPanel = () => {
                   type="text"
                   placeholder="50px"
                   value={settings.pdfMarginTop}
-                  onChange={(e) => handleChange('pdfMarginTop', e.target.value)}
+                  onChange={(e) => handleChange('pdfMarginTop', e.target.value, 300)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -496,7 +462,7 @@ const SettingsPanel = () => {
                   type="text"
                   placeholder="50px"
                   value={settings.pdfMarginRight}
-                  onChange={(e) => handleChange('pdfMarginRight', e.target.value)}
+                  onChange={(e) => handleChange('pdfMarginRight', e.target.value, 300)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -514,7 +480,7 @@ const SettingsPanel = () => {
                   type="text"
                   placeholder="50px"
                   value={settings.pdfMarginBottom}
-                  onChange={(e) => handleChange('pdfMarginBottom', e.target.value)}
+                  onChange={(e) => handleChange('pdfMarginBottom', e.target.value, 300)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -532,7 +498,7 @@ const SettingsPanel = () => {
                   type="text"
                   placeholder="50px"
                   value={settings.pdfMarginLeft}
-                  onChange={(e) => handleChange('pdfMarginLeft', e.target.value)}
+                  onChange={(e) => handleChange('pdfMarginLeft', e.target.value, 300)}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -553,7 +519,7 @@ const SettingsPanel = () => {
             <h3 className="settings-section-title">Screenshot Type</h3>
             <select
               value={settings.screenshotType}
-              onChange={(e) => handleChange('screenshotType', e.target.value)}
+              onChange={(e) => handleChange('screenshotType', e.target.value, 0)}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -575,7 +541,7 @@ const SettingsPanel = () => {
               min="0"
               max="100"
               value={settings.screenshotQuality}
-              onChange={(e) => handleChange('screenshotQuality', parseInt(e.target.value))}
+              onChange={(e) => handleChange('screenshotQuality', parseInt(e.target.value), 300)}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -591,7 +557,7 @@ const SettingsPanel = () => {
               <input
                 type="checkbox"
                 checked={settings.screenshotFullPage}
-                onChange={(e) => handleChange('screenshotFullPage', e.target.checked)}
+                onChange={(e) => handleChange('screenshotFullPage', e.target.checked, 0)}
                 style={{ marginRight: '8px' }}
               />
               Full Page Screenshot
@@ -604,7 +570,7 @@ const SettingsPanel = () => {
         <h3 className="settings-section-title">Form Factor</h3>
         <select
           value={settings.formFactor}
-          onChange={(e) => handleChange('formFactor', e.target.value)}
+          onChange={(e) => handleChange('formFactor', e.target.value, 0)}
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -630,25 +596,25 @@ const SettingsPanel = () => {
               type="number"
               placeholder="1920"
               value={settings.viewportWidth}
-              onChange={(e) => handleChange('viewportWidth', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: '#666' }}>
-              Height (px)
-            </label>
-            <input
-              type="number"
-              placeholder="1080"
-              value={settings.viewportHeight}
-              onChange={(e) => handleChange('viewportHeight', e.target.value)}
+              onChange={(e) => handleChange('viewportWidth', e.target.value, 300)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', color: '#666' }}>
+                  Height (px)
+                </label>
+                <input
+                  type="number"
+                  placeholder="1080"
+                  value={settings.viewportHeight}
+                  onChange={(e) => handleChange('viewportHeight', e.target.value, 300)}
               style={{
                 width: '100%',
                 padding: '8px 12px',
@@ -713,7 +679,7 @@ const SettingsPanel = () => {
           type="text"
           placeholder="Generate PDF"
           value={settings.buttonText}
-          onChange={(e) => handleChange('buttonText', e.target.value)}
+          onChange={(e) => handleChange('buttonText', e.target.value, 300)}
           style={{
             width: '100%',
             padding: '8px 12px',
@@ -724,27 +690,6 @@ const SettingsPanel = () => {
         />
       </div>
 
-      <div className="save-footer">
-        <button
-          onClick={handleSave}
-          style={{
-            width: '100%',
-            padding: '12px 24px',
-            backgroundColor: '#116dff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#0f5edb'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#116dff'}
-        >
-          Save Settings
-        </button>
-      </div>
     </div>
   );
 };
