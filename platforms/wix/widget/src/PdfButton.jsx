@@ -9,8 +9,14 @@ const PdfButton = ({ config }) => {
     console.log('[PDF Button] generatePdf() called');
     console.log('[PDF Button] Config received:', {
       ...config,
-      accessToken: config.accessToken ? `Present (${config.accessToken.length} chars)` : 'Missing'
+      publicApiKey: config.publicApiKey ? `Present (${config.publicApiKey.substring(0, 15)}...)` : 'Missing'
     });
+    
+    // Check if API key is configured
+    if (!config.publicApiKey) {
+      setError('Please configure your Public API Key in the widget settings');
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -70,30 +76,20 @@ const PdfButton = ({ config }) => {
         options.data = config.data;
       }
 
-      // Use Docuskribe API endpoint
-      const backendUrl = 'https://www.docuskribe.com/wix/api/generate-pdf';
+      // Use Docuskribe main API endpoint
+      const backendUrl = 'https://www.docuskribe.com/api/v1/jobs';
       
       console.log('[PDF Button] Calling PDF API at:', backendUrl);
 
-      // Prepare headers with access token for authentication
+      // Prepare headers with public API key for authentication
       const headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Public-Key': config.publicApiKey
       };
       
-      // Add access token for backend authentication
-      if (config.accessToken) {
-        headers['Authorization'] = config.accessToken;
-        console.log('[PDF Button] ✅ Adding Authorization header with access token');
-        console.log('[PDF Button] Token preview:', config.accessToken.substring(0, 30) + '...');
-      } else {
-        console.error('[PDF Button] ❌ No access token available in config!');
-        console.error('[PDF Button] Config object:', config);
-        console.error('[PDF Button] This request will likely fail with 401 Unauthorized');
-      }
-      
       console.log('[PDF Button] Request headers:', {
-        ...headers,
-        Authorization: headers.Authorization ? 'Present' : 'Missing'
+        'Content-Type': 'application/json',
+        'X-Public-Key': config.publicApiKey ? `${config.publicApiKey.substring(0, 15)}...` : 'Missing'
       });
 
       // Call backend API
@@ -157,11 +153,13 @@ const PdfButton = ({ config }) => {
       // If job-based, poll for completion
       if (result.jobId) {
         console.log('[PDF Button] Job-based response, starting polling for jobId:', result.jobId);
-        const pdf = await pollForJobCompletion(backendUrl, result.jobId, config.accessToken);
-        await handlePdfResult(pdf);
-      } else if (result.pdf) {
-        console.log('[PDF Button] Direct PDF result received');
-        await handlePdfResult(result.pdf);
+        const outputData = await pollForJobCompletion(backendUrl, result.jobId, config.publicApiKey);
+        await handlePdfResult(outputData, config.outputType);
+      } else if (result.result) {
+        // Direct result (synchronous generation)
+        console.log('[PDF Button] Direct result received');
+        const outputData = result.result.pdf || result.result.screenshot;
+        await handlePdfResult(outputData, config.outputType);
       } else {
         console.error('[PDF Button] ❌ Invalid response structure:', result);
         throw new Error('Invalid response from backend');
@@ -184,8 +182,8 @@ const PdfButton = ({ config }) => {
     }
   };
 
-  const pollForJobCompletion = async (backendUrl, jobId, accessToken, maxAttempts = 60) => {
-    console.log('[PDF Button] Starting job polling:', { jobId, maxAttempts, accessToken: accessToken ? 'Present' : 'Missing' });
+  const pollForJobCompletion = async (backendUrl, jobId, publicApiKey, maxAttempts = 60) => {
+    console.log('[PDF Button] Starting job polling:', { jobId, maxAttempts, publicApiKey: publicApiKey ? 'Present' : 'Missing' });
     const POLL_INTERVAL_MS = 5000; // Poll at most once every 5 seconds (rate limit)
     
     for (let i = 0; i < maxAttempts; i++) {
@@ -197,14 +195,11 @@ const PdfButton = ({ config }) => {
         console.log(`[PDF Button] Initial poll attempt ${i + 1}/${maxAttempts}`);
       }
 
-      // Prepare headers with access token
-      const headers = {};
-      if (accessToken) {
-        headers['Authorization'] = accessToken;
-        console.log('[PDF Button] Poll request includes Authorization header');
-      } else {
-        console.warn('[PDF Button] ⚠️ Poll request missing Authorization header');
-      }
+      // Prepare headers with public API key
+      const headers = {
+        'X-Public-Key': publicApiKey
+      };
+      console.log('[PDF Button] Poll request includes X-Public-Key header');
 
       const pollUrl = `${backendUrl}/${jobId}`;
       console.log('[PDF Button] Polling job status at:', pollUrl);
@@ -246,7 +241,12 @@ const PdfButton = ({ config }) => {
 
       if (status.status === 'completed') {
         console.log('[PDF Button] ✅ Job completed successfully');
-        return status.result.pdf;
+        // Main API returns result.pdf or result.screenshot depending on output type
+        const outputData = status.result?.pdf || status.result?.screenshot;
+        if (!outputData) {
+          throw new Error('No output data in completed job result');
+        }
+        return outputData;
       } else if (status.status === 'failed') {
         console.error('[PDF Button] ❌ Job failed:', status.error);
         throw new Error(status.error || 'PDF generation failed');
@@ -260,16 +260,31 @@ const PdfButton = ({ config }) => {
     throw new Error('PDF generation timed out');
   };
 
-  const handlePdfResult = async (pdfBase64) => {
+  const handlePdfResult = async (outputBase64, outputType = 'pdf') => {
     try {
+      // Determine content type and file extension based on output type
+      let contentType, fileExtension;
+      
+      if (outputType === 'screenshot') {
+        const screenshotType = config.screenshotType || 'png';
+        contentType = `image/${screenshotType}`;
+        fileExtension = screenshotType;
+      } else {
+        contentType = 'application/pdf';
+        fileExtension = 'pdf';
+      }
+      
       // Convert base64 to blob
-      const pdfBlob = base64ToBlob(pdfBase64, 'application/pdf');
+      const blob = base64ToBlob(outputBase64, contentType);
 
-      // Download PDF to user's device
-      downloadBlob(pdfBlob, `document-${Date.now()}.pdf`);
+      // Download to user's device
+      const filename = `document-${Date.now()}.${fileExtension}`;
+      downloadBlob(blob, filename);
+      
+      console.log('[PDF Button] ✅ File downloaded:', filename);
     } catch (err) {
-      console.error('Error handling PDF:', err);
-      throw new Error('Failed to process PDF');
+      console.error('[PDF Button] ❌ Error handling output:', err);
+      throw new Error('Failed to process output file');
     }
   };
 

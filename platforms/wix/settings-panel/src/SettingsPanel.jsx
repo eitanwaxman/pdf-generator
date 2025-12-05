@@ -13,6 +13,7 @@ const SCREENSHOT_TYPES = ['png', 'jpeg', 'webp'];
 
 const SettingsPanel = () => {
   const [settings, setSettings] = useState({
+    publicApiKey: '',
     urlSource: 'current',
     customUrl: '',
     pdfFormat: 'A4',
@@ -79,6 +80,7 @@ const SettingsPanel = () => {
 
     // Prepare settings object
     const settingsToSave = {
+      publicApiKey: settings.publicApiKey,
       urlSource: settings.urlSource,
       customUrl: settings.customUrl,
       pdfFormat: settings.pdfFormat,
@@ -135,6 +137,28 @@ const SettingsPanel = () => {
 
   return (
     <div id="settings-root">
+      <div className="settings-section">
+        <h3 className="settings-section-title">API Configuration</h3>
+        <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+          Get your public API key from <a href="https://www.docuskribe.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: '#116dff' }}>your dashboard</a>.
+          Make sure to add your Wix domain to the authorized domains list.
+        </p>
+        <input
+          type="text"
+          placeholder="pk_live_..."
+          value={settings.publicApiKey}
+          onChange={(e) => handleChange('publicApiKey', e.target.value)}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontFamily: 'monospace'
+          }}
+        />
+      </div>
+
       <div className="settings-section">
         <h3 className="settings-section-title">PDF Source</h3>
         
