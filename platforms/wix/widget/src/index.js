@@ -5,6 +5,10 @@ import './styles.css';
 import { createClient } from '@wix/sdk';
 import { site } from '@wix/site';
 
+// Bundle version - update this when deploying a new version
+const BUNDLE_VERSION = '1.0.0';
+const BUILD_TIMESTAMP = new Date().toISOString();
+
 class PdfGeneratorButton extends HTMLElement {
   static get observedAttributes() {
     return [
@@ -36,6 +40,13 @@ class PdfGeneratorButton extends HTMLElement {
     this.config = {};
     this.accessToken = null;
     
+    // Log bundle version on initialization
+    console.log('[PDF Widget] ========================================');
+    console.log('[PDF Widget] PDF Generator Widget Loading');
+    console.log('[PDF Widget] Bundle Version:', BUNDLE_VERSION);
+    console.log('[PDF Widget] Build Timestamp:', BUILD_TIMESTAMP);
+    console.log('[PDF Widget] ========================================');
+    
     // Initialize Wix Client
     const APP_ID = 'b715943d-8922-43a5-8728-c77c19d77879';
     
@@ -58,37 +69,77 @@ class PdfGeneratorButton extends HTMLElement {
         name: err.name
       });
     }
+    
+    // Provide function for Wix to inject access token
+    // Wix will call this automatically to inject the token
+    // Reference: https://dev.wix.com/docs/build-apps/develop-your-app/frameworks/self-hosting/supported-extensions/site-extensions/site-widgets-and-plugins/authenticate-using-the-wix-client-in-custom-elements-for-self-hosted-site-extensions
+    this.setAccessToken = (token) => {
+      console.log('[PDF Widget] setAccessToken() called by Wix');
+      console.log('[PDF Widget] Token received:', token ? `Present (${token.length} chars)` : 'Missing');
+      
+      if (token) {
+        this.accessToken = token;
+        console.log('[PDF Widget] ✅ Access token stored');
+        console.log('[PDF Widget] Token preview:', token.substring(0, 20) + '...');
+        
+        // Update client with the new token
+        try {
+          this.wixClient = createClient({
+            host: site.host({ applicationId: APP_ID }),
+            auth: site.auth({ accessToken: token })
+          });
+          console.log('[PDF Widget] ✅ Wix client updated with access token');
+        } catch (err) {
+          console.error('[PDF Widget] ❌ Failed to update client with token:', err);
+        }
+        
+        // Update config and re-render if already connected
+        if (this.isConnected) {
+          this.updateConfig();
+          this.render();
+          console.log('[PDF Widget] Config and UI updated with new access token');
+        }
+      } else {
+        console.warn('[PDF Widget] ⚠️ setAccessToken called with null/undefined token');
+        this.accessToken = null;
+      }
+    };
   }
 
   async connectedCallback() {
     console.log('[PDF Widget] connectedCallback() - Widget connected to DOM');
     
-    // Get access token asynchronously
-    if (this.wixClient) {
-      console.log('[PDF Widget] Attempting to retrieve access token...');
+    // Note: Wix will call setAccessToken() automatically to inject the access token
+    // We wait a bit for Wix to inject it, then try fallback if needed
+    console.log('[PDF Widget] Waiting for Wix to inject access token via setAccessToken()...');
+    
+    // Wait a bit for Wix to call setAccessToken()
+    // If it doesn't happen, try fallback method for compatibility
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // If token still not available, try fallback (for compatibility)
+    if (!this.accessToken && this.wixClient) {
+      console.log('[PDF Widget] Token not injected yet, trying fallback getAccessToken()...');
       try {
-        console.log('[PDF Widget] Checking auth module:', this.wixClient.auth);
         this.accessToken = await this.wixClient.auth.getAccessToken();
-        
         if (this.accessToken) {
-          console.log('[PDF Widget] ✅ Successfully retrieved access token');
+          console.log('[PDF Widget] ✅ Retrieved access token via fallback method');
           console.log('[PDF Widget] Token length:', this.accessToken.length);
           console.log('[PDF Widget] Token preview:', this.accessToken.substring(0, 20) + '...');
-        } else {
-          console.warn('[PDF Widget] ⚠️ Access token is null/undefined');
         }
       } catch (err) {
-        console.error('[PDF Widget] ❌ Failed to get access token:', err);
-        console.error('[PDF Widget] Error details:', {
-          message: err.message,
-          stack: err.stack,
-          name: err.name,
-          code: err.code
-        });
-        this.accessToken = null;
+        console.warn('[PDF Widget] ⚠️ Fallback getAccessToken() failed:', err.message);
+        console.log('[PDF Widget] This is normal if Wix hasn\'t injected the token yet');
       }
+    }
+    
+    // Log final state
+    if (this.accessToken) {
+      console.log('[PDF Widget] ✅ Access token available');
+      console.log('[PDF Widget] Token length:', this.accessToken.length);
     } else {
-      console.warn('[PDF Widget] ⚠️ Wix client not initialized - cannot retrieve access token');
+      console.log('[PDF Widget] ⏳ Access token not yet available');
+      console.log('[PDF Widget] Widget will work once Wix calls setAccessToken()');
     }
     
     console.log('[PDF Widget] Final access token state:', this.accessToken ? 'Present' : 'Missing');
