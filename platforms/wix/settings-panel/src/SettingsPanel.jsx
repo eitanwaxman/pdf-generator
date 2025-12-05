@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { createClient } from '@wix/sdk';
+import { editor } from '@wix/editor';
 
 const PDF_FORMATS = ['A4', 'Letter', 'Legal', 'Tabloid', 'Ledger', 'A0', 'A1', 'A2', 'A3', 'A5', 'A6'];
 const FORM_FACTORS = [
@@ -69,70 +71,52 @@ const SettingsPanel = () => {
     });
   };
 
-  const handleSave = () => {
-    // Convert dataParams array to object
-    const data = {};
-    settings.dataParams.forEach(param => {
-      if (param.key && param.value) {
-        data[param.key] = param.value;
-      }
-    });
-
-    // Prepare settings object
-    const settingsToSave = {
-      publicApiKey: settings.publicApiKey,
-      urlSource: settings.urlSource,
-      customUrl: settings.customUrl,
-      pdfFormat: settings.pdfFormat,
-      pdfMarginTop: settings.pdfMarginTop,
-      pdfMarginRight: settings.pdfMarginRight,
-      pdfMarginBottom: settings.pdfMarginBottom,
-      pdfMarginLeft: settings.pdfMarginLeft,
-      formFactor: settings.formFactor,
-      outputType: settings.outputType,
-      screenshotType: settings.screenshotType,
-      screenshotQuality: settings.screenshotQuality,
-      screenshotFullPage: settings.screenshotFullPage,
-      viewportWidth: settings.viewportWidth,
-      viewportHeight: settings.viewportHeight,
-      buttonText: settings.buttonText,
-      data: Object.keys(data).length > 0 ? data : undefined
-    };
-
-    console.log('Saving settings:', settingsToSave);
-
-    // Send settings to parent window (widget and Wix editor)
-    // Send to all possible targets
+  const handleSave = async () => {
+    console.log('[Settings Panel] Saving settings...');
+    
     try {
-      // Send to immediate parent
-      window.parent.postMessage({
-        type: 'pdf-settings-update',
-        settings: settingsToSave
-      }, '*');
+      // Initialize Wix SDK client
+      const wixClient = createClient({
+        host: editor.host()
+      });
+      
+      const widgetApi = wixClient.use(editor.widget);
+      
+      // Convert dataParams array to JSON string for storage
+      const data = {};
+      settings.dataParams.forEach(param => {
+        if (param.key && param.value) {
+          data[param.key] = param.value;
+        }
+      });
+      const dataJson = Object.keys(data).length > 0 ? JSON.stringify(data) : '';
 
-      // Send to top window (in case of nested iframes)
-      if (window.top !== window.parent) {
-        window.top.postMessage({
-          type: 'pdf-settings-update',
-          settings: settingsToSave
-        }, '*');
-      }
+      // Set each property individually using setProp
+      // Properties are bound to custom element attributes (kebab-case)
+      await widgetApi.setProp('public-api-key', settings.publicApiKey || '');
+      await widgetApi.setProp('url-source', settings.urlSource || 'current');
+      await widgetApi.setProp('custom-url', settings.customUrl || '');
+      await widgetApi.setProp('pdf-format', settings.pdfFormat || 'A4');
+      await widgetApi.setProp('pdf-margin-top', settings.pdfMarginTop || '50px');
+      await widgetApi.setProp('pdf-margin-right', settings.pdfMarginRight || '50px');
+      await widgetApi.setProp('pdf-margin-bottom', settings.pdfMarginBottom || '50px');
+      await widgetApi.setProp('pdf-margin-left', settings.pdfMarginLeft || '50px');
+      await widgetApi.setProp('form-factor', settings.formFactor || 'desktop');
+      await widgetApi.setProp('output-type', settings.outputType || 'pdf');
+      await widgetApi.setProp('screenshot-type', settings.screenshotType || 'png');
+      await widgetApi.setProp('screenshot-quality', String(settings.screenshotQuality || 90));
+      await widgetApi.setProp('screenshot-full-page', String(settings.screenshotFullPage !== false));
+      await widgetApi.setProp('viewport-width', settings.viewportWidth || '');
+      await widgetApi.setProp('viewport-height', settings.viewportHeight || '');
+      await widgetApi.setProp('button-text', settings.buttonText || 'Generate PDF');
+      await widgetApi.setProp('data', dataJson);
 
-      // Also broadcast to all frames
-      if (window.opener) {
-        window.opener.postMessage({
-          type: 'pdf-settings-update',
-          settings: settingsToSave
-        }, '*');
-      }
-
-      console.log('Settings broadcasted successfully');
+      console.log('[Settings Panel] ✅ Settings saved successfully');
+      alert('Settings saved successfully!');
     } catch (error) {
-      console.error('Error broadcasting settings:', error);
+      console.error('[Settings Panel] ❌ Error saving settings:', error);
+      alert('Error saving settings: ' + error.message);
     }
-
-    // Show success message
-    alert('Settings saved successfully!');
   };
 
   return (

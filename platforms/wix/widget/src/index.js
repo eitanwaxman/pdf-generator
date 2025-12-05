@@ -54,58 +54,19 @@ class PdfGeneratorButton extends HTMLElement {
     
     this.render();
     console.log('[PDF Widget] Widget rendered');
-    
-    // Listen for messages from settings panel
-    window.addEventListener('message', this.handleMessage.bind(this));
-    console.log('[PDF Widget] Message listener attached');
   }
 
   disconnectedCallback() {
-    window.removeEventListener('message', this.handleMessage.bind(this));
     if (this.root) {
       this.root.unmount();
     }
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
+    console.log(`[PDF Widget] Attribute changed: ${name} = ${newValue}`);
     if (oldValue !== newValue) {
       this.updateConfig();
       this.render();
-    }
-  }
-
-  handleMessage(event) {
-    // Handle settings updates from settings panel
-    // Accept messages from any origin for Wix compatibility
-    if (event.data && event.data.type === 'pdf-settings-update') {
-      const settings = event.data.settings;
-      
-      console.log('Received settings update:', settings);
-      
-      // Update attributes based on settings
-      Object.keys(settings).forEach(key => {
-        const value = settings[key];
-        
-        // Convert camelCase to kebab-case for attributes
-        const attrName = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-        
-        // Handle different value types
-        if (value === undefined || value === null) {
-          // Skip undefined/null values
-          return;
-        } else if (typeof value === 'object') {
-          // JSON stringify objects
-          this.setAttribute(attrName, JSON.stringify(value));
-        } else if (typeof value === 'boolean') {
-          // Convert boolean to string
-          this.setAttribute(attrName, value.toString());
-        } else {
-          // Set as string
-          this.setAttribute(attrName, value.toString());
-        }
-      });
-      
-      console.log('Attributes updated, re-rendering...');
     }
   }
 

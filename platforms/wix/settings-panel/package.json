@@ -1,6 +1,6 @@
 {
   "name": "wix-pdf-generator-settings-panel",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Wix PDF Generator Settings Panel",
   "main": "src/index.js",
   "scripts": {
@@ -11,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@wix/sdk": "^1.12.0",
+    "@wix/editor": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
