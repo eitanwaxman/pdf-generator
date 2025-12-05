@@ -15,7 +15,6 @@ const userRouter = require('./routes/v1/user');
 const publicKeysRouter = require('./routes/v1/public-keys');
 const billingRouter = require('./routes/internal/billing');
 const stripeWebhookRouter = require('./routes/webhooks/stripe');
-const wixPdfRouter = require('./platforms/wix/backend');
 
 // Worker
 const worker = require('./workers/pdfWorker');
@@ -115,9 +114,6 @@ app.use('/api/v1/jobs', authenticateFlexible, rateLimiter, jobsRouter);
 // Internal Routes (server-only, requires service key)
 app.use('/internal/billing', billingRouter);
 
-// Wix PDF generation endpoint
-app.use('/wix/api/generate-pdf', wixPdfRouter);
-
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
@@ -130,10 +126,9 @@ app.listen(port, () => {
     console.log(`  POST /api/v1/jobs - Create a PDF generation job`);
     console.log(`  GET /api/v1/jobs/:jobId - Get job status and result`);
     console.log(`  DELETE /api/v1/jobs/:jobId - Cancel a job`);
-    console.log('\nWix Widget Endpoints:');
+    console.log('\nWix Widget Files:');
     console.log(`  Widget: /wix/widget/dist/bundle.js`);
     console.log(`  Settings: /wix/settings-panel/dist/index.html`);
-    console.log(`  API: POST /wix/api/generate-pdf`);
     console.log('\nWorker started and ready to process jobs');
 });
 

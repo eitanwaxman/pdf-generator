@@ -4,7 +4,7 @@ import PdfButton from './PdfButton.jsx';
 import './styles.css';
 
 // Bundle version - update this when deploying a new version
-const BUNDLE_VERSION = '1.0.0';
+const BUNDLE_VERSION = '2.0.0'; // v2.0.0 - Removed Wix backend, now uses public API key authentication
 const BUILD_TIMESTAMP = new Date().toISOString();
 
 class PdfGeneratorButton extends HTMLElement {
