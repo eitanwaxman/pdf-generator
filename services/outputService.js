@@ -16,9 +16,7 @@ const {
     SCROLL
 } = require('../config/constants');
 
-const SERVER_URL = process.env.SERVER_URL || "http://localhost:3000";
-
-let browser; // deprecated singleton (kept for backward compatibility in case referenced elsewhere)
+const { SERVER_URL } = require('../config/constants');
 
 /**
  * Remove Wix ads from the page
@@ -77,18 +75,6 @@ function addWatermark(watermarkConfig) {
     watermark.style.fontFamily = 'Arial';
     watermark.style.zIndex = watermarkConfig.Z_INDEX;
     document.body.insertBefore(watermark, uppermostElement);
-}
-
-/**
- * Get or create a browser instance
- * @returns {Promise<Browser>} Puppeteer browser instance
- */
-async function getBrowser() {
-    // Maintained for compatibility; prefer browserPool.acquirePage() in new code
-    if (!browser) {
-        browser = await puppeteer.launch({ headless: 'new' });
-    }
-    return browser;
 }
 
 /**
@@ -333,12 +319,37 @@ async function preparePageForOutput({ url, account, platform, viewport = null, f
 }
 
 /**
+ * @typedef {Object} Account
+ * @property {string} userId - User's unique identifier
+ * @property {string} tier - User's subscription tier ('free' | 'starter' | 'pro')
+ * @property {string} name - User's display name
+ * @property {string} apiKey - The API key used for authentication
+ */
+
+/**
+ * @typedef {Object} PdfOptions
+ * @property {string} [format] - PDF format (e.g., 'A4', 'Letter')
+ * @property {Object} [margin] - PDF margins {top, right, bottom, left}
+ * @property {string} [platform] - Platform identifier (e.g., 'wix')
+ * @property {Object} [viewport] - Viewport configuration
+ * @property {string} [formFactor] - Form factor ('desktop' | 'mobile')
+ */
+
+/**
+ * @typedef {Object} OutputResult
+ * @property {Buffer} buffer - Generated output buffer
+ * @property {string} fileUrl - Temporary file URL (if responseType is 'url')
+ * @property {string} outputType - Type of output ('pdf' | 'screenshot')
+ */
+
+/**
  * Generate PDF from website URL
- * @param {object} params - PDF generation parameters
+ * @param {Object} params - PDF generation parameters
  * @param {string} params.url - The URL to convert to PDF
- * @param {object} params.pdfOptions - PDF generation options (format, margin, platform, viewport)
- * @param {object} params.account - Account information (tier: 'free' | 'paid')
- * @returns {object} - { buffer, fileUrl, outputType }
+ * @param {PdfOptions} [params.pdfOptions] - PDF generation options
+ * @param {Account} params.account - Account information
+ * @param {AbortSignal} [params.abortSignal] - Abort signal for cancellation
+ * @returns {Promise<OutputResult>} Generated PDF result
  */
 async function generatePdf({ url, pdfOptions = {}, account, abortSignal = null }) {
     const { margin, format, platform, viewport, formFactor = 'desktop' } = pdfOptions;
@@ -377,11 +388,6 @@ async function generatePdf({ url, pdfOptions = {}, account, abortSignal = null }
 
         const fileUrl = storeTemporaryFile(pdfBuffer, 'pdf');
 
-        await page.close();
-        try {
-            await browserPool.releasePage(page);
-        } catch (e) {}
-
         return { buffer: pdfBuffer, fileUrl, outputType: 'pdf' };
     } catch (error) {
         console.error(`[PDF Service] Error: ${error.message}`);
@@ -405,12 +411,23 @@ async function generatePdf({ url, pdfOptions = {}, account, abortSignal = null }
 }
 
 /**
+ * @typedef {Object} ScreenshotOptions
+ * @property {string} [type] - Screenshot type ('png' | 'jpeg' | 'webp')
+ * @property {number} [quality] - JPEG quality (0-100)
+ * @property {boolean} [fullPage] - Whether to capture full page
+ * @property {Object} [viewport] - Viewport configuration
+ * @property {string} [platform] - Platform identifier
+ * @property {string} [formFactor] - Form factor ('desktop' | 'mobile')
+ */
+
+/**
  * Generate screenshot from website URL
- * @param {object} params - Screenshot generation parameters
+ * @param {Object} params - Screenshot generation parameters
  * @param {string} params.url - The URL to screenshot
- * @param {object} params.screenshotOptions - Screenshot options (type, quality, fullPage, viewport)
- * @param {object} params.account - Account information (tier: 'free' | 'paid')
- * @returns {object} - { buffer, fileUrl, outputType }
+ * @param {ScreenshotOptions} [params.screenshotOptions] - Screenshot options
+ * @param {Account} params.account - Account information
+ * @param {AbortSignal} [params.abortSignal] - Abort signal for cancellation
+ * @returns {Promise<OutputResult>} Generated screenshot result
  */
 async function generateScreenshot({ url, screenshotOptions = {}, account, abortSignal = null }) {
     const {
@@ -454,11 +471,6 @@ async function generateScreenshot({ url, screenshotOptions = {}, account, abortS
 
         const fileUrl = storeTemporaryFile(screenshotBuffer, type);
 
-        await page.close();
-        try {
-            await browserPool.releasePage(page);
-        } catch (e) {}
-
         return { buffer: screenshotBuffer, fileUrl, outputType: 'screenshot' };
     } catch (error) {
         console.error(`[Screenshot Service] Error: ${error.message}`);
@@ -490,9 +502,9 @@ async function generateScreenshot({ url, screenshotOptions = {}, account, abortS
  * @returns {object} - { buffer, fileUrl, outputType }
  */
 async function generateOutput({ url, options = {}, account, signal = null }) {
-    const outputType = options.outputType || 'pdf'; // Default to PDF for backward compatibility
-    const platform = options.platform; // Extract shared platform option
-    const formFactor = options.formFactor || 'desktop'; // Extract formFactor option, default to desktop
+    const outputType = options.outputType || 'pdf';
+    const platform = options.platform;
+    const formFactor = options.formFactor || 'desktop';
 
     // Append options.data as query params to the URL if provided
     let finalUrl = url;
@@ -516,8 +528,8 @@ async function generateOutput({ url, options = {}, account, signal = null }) {
             url: finalUrl, 
             screenshotOptions: { 
                 ...options.screenshotOptions,
-                platform,  // Pass platform explicitly to nested options
-                formFactor  // Pass formFactor explicitly to nested options
+                platform,
+                formFactor
             }, 
             account,
             abortSignal: signal
@@ -526,9 +538,9 @@ async function generateOutput({ url, options = {}, account, signal = null }) {
         return await generatePdf({ 
             url: finalUrl, 
             pdfOptions: { 
-                ...(options.pdfOptions || options),  // Support both structures for backward compatibility
-                platform,  // Pass platform explicitly to nested options
-                formFactor  // Pass formFactor explicitly to nested options
+                ...options.pdfOptions,
+                platform,
+                formFactor
             },
             account,
             abortSignal: signal

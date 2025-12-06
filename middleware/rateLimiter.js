@@ -24,40 +24,6 @@ let initFailed = false;
     }
 })();
 
-// Custom daily rate limiter using Redis directly
-const checkDailyLimit = async (apiKey) => {
-    if (!redisConnection || initFailed) {
-        return true; // Allow request if Redis unavailable
-    }
-
-    try {
-        const key = `rate_limit:daily:${apiKey}`;
-        const windowMs = RATE_LIMIT.WINDOW_MS;
-        const maxRequests = RATE_LIMIT.MAX_REQUESTS_FREE;
-        
-        const current = await redisConnection.get(key);
-        
-        if (current === null) {
-            // First request in window
-            await redisConnection.setEx(key, windowMs / 1000, '1');
-            return true;
-        }
-        
-        const count = parseInt(current);
-        if (count >= maxRequests) {
-            return false; // Rate limit exceeded
-        }
-        
-        // Increment count
-        await redisConnection.incr(key);
-        return true;
-        
-    } catch (error) {
-        console.error('Rate limit check error:', error.message);
-        return true; // Allow request on error
-    }
-};
-
 // Per-minute throttle using Redis INCR with TTL window
 const checkPerMinuteLimit = async (apiKey, tier) => {
     if (!redisConnection || initFailed) {

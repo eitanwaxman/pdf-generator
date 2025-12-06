@@ -20,11 +20,18 @@ router.post('/register', async (req, res) => {
     }
     
     try {
-        // Create user in Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        // Remove trailing slash if present to avoid redirect issues
+        const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+        
+        console.log('Registration - Using APP_URL:', appUrl); // Debug log
+        
+        // Create user using signUp - this automatically sends confirmation email
+        const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
-            email_confirm: false // Require email confirmation
+            options: {
+                emailRedirectTo: appUrl
+            }
         });
         
         if (authError) {
@@ -34,39 +41,65 @@ router.post('/register', async (req, res) => {
             });
         }
         
-        const userId = authData.user.id;
-        
-        // Generate confirmation link with correct redirect URL and send confirmation email
-        // Remove trailing slash if present to avoid redirect issues
-        const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
-        
-        console.log('Registration - Using APP_URL:', appUrl); // Debug log
-        
-        // Generate confirmation link with correct redirect URL
-        // This will trigger Supabase to send the confirmation email with the correct redirect URL
-        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-            type: 'signup',
-            email: email,
-            options: {
-                redirectTo: appUrl
+        // Check if user already exists (signUp returns user with empty identities array)
+        // This is Supabase's way of preventing user enumeration
+        if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
+            console.log('User already exists, attempting to resend confirmation');
+            
+            // User already exists - try to resend confirmation if not verified
+            const { data: existingUsers } = await supabase.auth.admin.listUsers();
+            const existingUser = existingUsers?.users?.find(u => u.email === email);
+            
+            if (existingUser) {
+                // Ensure user has a profile (may be missing if created via magic link)
+                const { data: existingProfile } = await supabase
+                    .from('user_profiles')
+                    .select('id')
+                    .eq('id', existingUser.id)
+                    .single();
+                
+                if (!existingProfile) {
+                    // Create missing profile
+                    await supabase
+                        .from('user_profiles')
+                        .insert({
+                            id: existingUser.id,
+                            tier: 'free',
+                            monthly_credits: 50,
+                            credits_used: 0,
+                            overage_enabled: false,
+                            subscription_period_start: new Date().toISOString(),
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        });
+                    console.log(`Created missing profile for existing user ${existingUser.id}`);
+                }
+                
+                if (!existingUser.email_confirmed_at) {
+                    // User exists but hasn't confirmed - resend confirmation
+                    const { error: resendError } = await supabase.auth.resend({
+                        type: 'signup',
+                        email: email,
+                        options: {
+                            emailRedirectTo: appUrl
+                        }
+                    });
+                    
+                    if (!resendError) {
+                        return res.status(200).json({ 
+                            message: 'A confirmation email has been resent. Please check your inbox.',
+                            resent: true
+                        });
+                    }
+                }
             }
-        });
-        
-        if (linkError) {
-            console.error('Error generating confirmation link:', linkError);
-            // Continue with registration even if email link generation fails
+            
+            return res.status(400).json({ 
+                error: 'An account with this email already exists. Please login or reset your password.'
+            });
         }
         
-        // Resend confirmation email to ensure it's sent with the correct redirect URL
-        const { error: resendError } = await supabase.auth.admin.resend({
-            type: 'signup',
-            email: email
-        });
-        
-        if (resendError) {
-            console.error('Error sending confirmation email:', resendError);
-            // Continue with registration even if email sending fails
-        }
+        const userId = authData.user.id;
         
         // Create user profile with default tier
         const { error: profileError } = await supabase

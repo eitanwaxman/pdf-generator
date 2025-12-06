@@ -3,12 +3,20 @@
  * Usage: node example-client.js
  */
 
-const apiKey = process.argv[2] || 'test-free-key';
+const apiKey = process.argv[2] || process.env.API_KEY || '';
 const baseUrl = process.env.API_URL || 'http://localhost:3000';
 
 async function testPdfGeneration() {
     console.log('📄 Docuskribe API Client\n');
-    console.log(`Using API Key: ${apiKey}`);
+    
+    if (!apiKey) {
+        console.error('❌ Error: API key is required');
+        console.log('Usage: node example-client.js <api-key>');
+        console.log('Or set API_KEY environment variable');
+        process.exit(1);
+    }
+    
+    console.log(`Using API Key: ${apiKey.substring(0, 20)}...`);
     console.log(`Server: ${baseUrl}\n`);
 
     try {

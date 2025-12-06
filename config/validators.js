@@ -272,11 +272,14 @@ function validateJobOptions(options) {
     const actualOutputType = outputType || 'pdf'; // Default to PDF
     
     if (actualOutputType === 'pdf') {
-        // For PDF, validate pdfOptions OR top-level options (backward compatibility)
-        const optionsToValidate = pdfOptions || options;
-        const pdfValidation = validatePdfOptions(optionsToValidate);
-        if (!pdfValidation.valid) {
-            errors.push(...pdfValidation.errors);
+        // For PDF, validate pdfOptions
+        if (!pdfOptions) {
+            errors.push('pdfOptions is required when outputType is "pdf"');
+        } else {
+            const pdfValidation = validatePdfOptions(pdfOptions);
+            if (!pdfValidation.valid) {
+                errors.push(...pdfValidation.errors);
+            }
         }
     } else if (actualOutputType === 'screenshot') {
         const screenshotValidation = validateScreenshotOptions(screenshotOptions);

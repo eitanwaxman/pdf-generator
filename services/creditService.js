@@ -17,6 +17,33 @@ async function ensureCurrentBillingPeriod(userId) {
             .eq('id', userId)
             .single();
         
+        // If profile doesn't exist (PGRST116), create a default one
+        if (error && error.code === 'PGRST116') {
+            console.log(`Profile not found for user ${userId}, creating default profile`);
+            
+            const { data: newProfile, error: createError } = await supabase
+                .from('user_profiles')
+                .insert({
+                    id: userId,
+                    tier: 'free',
+                    monthly_credits: 50,
+                    credits_used: 0,
+                    overage_enabled: false,
+                    subscription_period_start: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+            
+            if (createError) {
+                console.error('Error creating default profile:', createError);
+                throw createError;
+            }
+            
+            return newProfile;
+        }
+        
         if (error) {
             throw error;
         }
@@ -67,12 +94,33 @@ async function ensureCurrentBillingPeriod(userId) {
 const { MAX_MONTHLY_CREDITS } = require('../config/constants');
 
 /**
+ * @typedef {Object} UserProfile
+ * @property {string} id - User's unique identifier
+ * @property {string} tier - Subscription tier ('free' | 'starter' | 'pro')
+ * @property {number} monthly_credits - Monthly credit allowance
+ * @property {number} credits_used - Credits used in current period
+ * @property {boolean} overage_enabled - Whether overage billing is enabled
+ * @property {string} [stripe_metered_item_id] - Stripe metered item ID for overage
+ * @property {string} [subscription_period_start] - Billing period start date
+ * @property {string} [subscription_period_end] - Billing period end date
+ */
+
+/**
+ * @typedef {Object} CreditCheckResult
+ * @property {boolean} allowed - Whether the operation is allowed
+ * @property {string} [reason] - Reason if not allowed
+ * @property {Object} [details] - Additional details
+ * @property {boolean} [isOverage] - Whether this is an overage usage
+ * @property {number} [overageAmount] - Amount of overage
+ */
+
+/**
  * Check if user has sufficient credits to create a job
  * Applies runtime caps based on tier, regardless of DB values
  * Takes into account monthly credits, usage, and overage settings
  * 
- * @param {Object} profile - User profile object
- * @returns {Object} { allowed: boolean, reason?: string, details?: Object }
+ * @param {UserProfile} profile - User profile object
+ * @returns {CreditCheckResult} Credit availability check result
  */
 function checkCreditAvailability(profile) {
     const tier = profile.tier || 'free';

@@ -1,43 +1,22 @@
 const crypto = require('crypto');
 const { supabase } = require('../config/supabase');
+const { createCache } = require('../lib/cache');
 
 // In-memory cache for API key validations
-// Key: apiKey (trimmed)
-// Value: { account: AccountObject|null, expiresAt: number }
-const validationCache = new Map();
-const CACHE_ENABLED = (process.env.API_KEY_CACHE_ENABLED || 'true').toLowerCase() === 'true';
-const CACHE_TTL_SUCCESS = Number(process.env.API_KEY_CACHE_TTL || 45000); // 45s default
-const CACHE_TTL_FAILURE = 10000; // 10s for negative cache
-const MAX_CACHE_SIZE = Number(process.env.API_KEY_CACHE_MAX_SIZE || 1000);
+const validationCache = createCache();
 
 function getCachedValidation(trimmedKey) {
-    if (!CACHE_ENABLED) return undefined;
-    const entry = validationCache.get(trimmedKey);
-    if (!entry) return undefined;
-    if (Date.now() >= entry.expiresAt) {
-        validationCache.delete(trimmedKey);
-        return undefined;
-    }
-    return entry.account; // can be null for negative cache
+    return validationCache.get(trimmedKey);
 }
 
 function setCachedValidation(trimmedKey, account, ttlMs) {
-    if (!CACHE_ENABLED) return;
-    // Simple size control: drop oldest entry when exceeding max size
-    if (validationCache.size >= MAX_CACHE_SIZE) {
-        const firstKey = validationCache.keys().next().value;
-        if (firstKey) validationCache.delete(firstKey);
-    }
-    validationCache.set(trimmedKey, {
-        account,
-        expiresAt: Date.now() + ttlMs
-    });
+    validationCache.set(trimmedKey, account, ttlMs);
 }
 
 function invalidateCacheForApiKey(apiKey) {
     if (!apiKey) return;
     const trimmedKey = apiKey.trim();
-    validationCache.delete(trimmedKey);
+    validationCache.invalidate(trimmedKey);
 }
 
 /**
@@ -87,9 +66,17 @@ const createApiKeyForUser = async (userId, name = 'Default API Key') => {
 };
 
 /**
+ * @typedef {Object} Account
+ * @property {string} userId - User's unique identifier
+ * @property {string} tier - User's subscription tier ('free' | 'starter' | 'pro')
+ * @property {string} name - User's display name (typically email)
+ * @property {string} apiKey - The API key used for authentication
+ */
+
+/**
  * Validate an API key and return user information
  * @param {string} apiKey - The API key to validate
- * @returns {Promise<{userId: string, tier: string, name: string, apiKey: string} | null>}
+ * @returns {Promise<Account | null>} Account object if valid, null otherwise
  */
 const validateApiKey = async (apiKey) => {
     try {
@@ -108,10 +95,10 @@ const validateApiKey = async (apiKey) => {
             return cached;
         }
 
-        // Query API key first
+        // Query API key with user profile in a single JOIN query
         const { data: keyData, error: keyError } = await supabase
             .from('api_keys')
-            .select('id, user_id, key, name, last_used_at')
+            .select('id, user_id, key, name, last_used_at, user_profiles(tier)')
             .eq('key', trimmedKey)
             .single();
         
@@ -127,24 +114,17 @@ const validateApiKey = async (apiKey) => {
                     hint: keyError?.hint
                 });
             }
-            // Negative cache to avoid DB hammering
-            setCachedValidation(trimmedKey, null, CACHE_TTL_FAILURE);
+            // Negative cache to avoid DB hammering (10s TTL for failures)
+            setCachedValidation(trimmedKey, null, 10000);
             return null;
         }
 
         console.log('validateApiKey: Found API key for user:', keyData.user_id);
         
-        // Now get user profile separately
-        const { data: profileData, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('tier')
-            .eq('id', keyData.user_id)
-            .single();
-        
-        if (profileError) {
-            console.error('validateApiKey: Error fetching user profile:', profileError);
-            // Continue anyway with default tier
-        }
+        // Extract tier from joined profile data
+        const profileData = Array.isArray(keyData.user_profiles) 
+            ? keyData.user_profiles[0] 
+            : keyData.user_profiles;
         
         // Update last_used_at timestamp (fire and forget)
         supabase
@@ -154,7 +134,7 @@ const validateApiKey = async (apiKey) => {
             .then()
             .catch(err => console.error('Error updating last_used_at:', err));
         
-        // Get user email for name
+        // Get user email for name (still requires separate auth call)
         const { data: userData, error: userError } = await supabase.auth.admin.getUserById(keyData.user_id);
         
         if (userError) {
@@ -168,8 +148,8 @@ const validateApiKey = async (apiKey) => {
             apiKey: keyData.key
         };
 
-        // Cache successful validation
-        setCachedValidation(trimmedKey, account, CACHE_TTL_SUCCESS);
+        // Cache successful validation (uses default success TTL from cache utility)
+        setCachedValidation(trimmedKey, account);
 
         return account;
     } catch (error) {

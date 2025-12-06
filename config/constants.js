@@ -124,7 +124,8 @@ const TIME = {
     PAGE_NAVIGATION_TIMEOUT: 0,
     NETWORK_IDLE_TIME: 500,
     NETWORK_IDLE_TIMEOUT: 3000,
-    GENERATION_TIMEOUT_MS: 120 * 1000 // 120 seconds hard timeout for PDF generation
+    GENERATION_TIMEOUT_MS: 120 * 1000, // 120 seconds hard timeout for PDF generation
+    POLL_MIN_INTERVAL_MS: 5000 // Minimum interval between job status polls (5 seconds)
 };
 
 // Priority Constants (higher = sooner)
@@ -197,7 +198,7 @@ const PDF_FULL_HEIGHTS = {
 };
 
 // Concurrency
-const WORKER_CONCURRENCY = 3;
+const WORKER_CONCURRENCY = Number(process.env.WORKER_CONCURRENCY || 3);
 
 // Per-user concurrency limits (active jobs at the same time)
 const CONCURRENCY = {
@@ -212,6 +213,9 @@ const MAX_MONTHLY_CREDITS = {
     starter: 300,
     pro: 1000
 };
+
+// Server URL for temporary file access
+const SERVER_URL = process.env.SERVER_URL || "http://localhost:3000";
 
 module.exports = {
     PDF_FORMATS,
@@ -242,6 +246,7 @@ module.exports = {
     VIEWPORT,
     SCROLL,
     REDIS_RETRY,
-    BYTES
+    BYTES,
+    SERVER_URL
 };
 

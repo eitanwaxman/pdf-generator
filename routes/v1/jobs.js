@@ -27,7 +27,8 @@ let redisInitFailed = false;
 
 // In-memory fallback for poll throttling when Redis is unavailable
 const pollThrottleMemory = new Map(); // key: `${apiKey}:${jobId}` -> number (last timestamp ms)
-const POLL_MIN_INTERVAL_MS = 5000; // 5 seconds
+const { TIME } = require('../../config/constants');
+const POLL_MIN_INTERVAL_MS = TIME.POLL_MIN_INTERVAL_MS;
 
 async function checkPollThrottle(apiKey, jobId) {
     const key = `poll_limit:${apiKey}:${jobId}`;
@@ -71,8 +72,36 @@ async function getActiveCount(apiKey) {
 }
 
 /**
+ * @typedef {Object} JobOptions
+ * @property {string} [outputType] - Type of output ('pdf' | 'screenshot')
+ * @property {string} [format] - PDF format (e.g., 'A4', 'Letter')
+ * @property {Object} [margin] - PDF margins
+ * @property {string} [responseType] - Response format ('buffer' | 'url')
+ * @property {Object} [screenshotOptions] - Screenshot-specific options
+ * @property {Object} [pdfOptions] - PDF-specific options
+ * @property {string} [platform] - Platform identifier (e.g., 'wix')
+ * @property {string} [formFactor] - Form factor ('desktop' | 'mobile')
+ * @property {Object} [data] - Additional data to append as query params
+ */
+
+/**
+ * @typedef {Object} JobResponse
+ * @property {string} jobId - Unique job identifier
+ * @property {string} status - Job status ('pending' | 'processing' | 'completed' | 'failed')
+ * @property {string} outputType - Type of output generated
+ * @property {string} message - Status message
+ * @property {Object} credits - Credit information
+ * @property {number} credits.used - Credits used
+ * @property {number} credits.remaining - Credits remaining
+ * @property {number} credits.monthly_limit - Monthly credit limit
+ */
+
+/**
  * POST /api/v1/jobs
  * Create a new PDF or Screenshot generation job
+ * @param {Object} req.body
+ * @param {string} req.body.url - URL to process
+ * @param {JobOptions} [req.body.options] - Job options
  */
 router.post('/', async (req, res) => {
     const { url, options } = req.body;
@@ -99,7 +128,7 @@ router.post('/', async (req, res) => {
     try {
         // Enforce per-user active job concurrency limit
         const tier = req.account?.tier || 'free';
-        const limit = tier === 'paid' ? CONCURRENCY.PAID_ACTIVE_MAX : CONCURRENCY.FREE_ACTIVE_MAX;
+        const limit = CONCURRENCY[tier] ?? CONCURRENCY.free;
         // Use apiKey for standard auth, or userId for public key auth
         const trackingKey = req.account.apiKey || req.account.userId;
         const activeCount = await getActiveCount(trackingKey);
@@ -129,28 +158,35 @@ router.post('/', async (req, res) => {
         const jobId = await addPdfJob(url, options, req.account, jobCredits);
         const outputType = options?.outputType || 'pdf';
         
-        // Increment credits_used counter
-        const { error: incrementError } = await supabase
+        // Increment credits_used counter and get updated profile in one query
+        const { data: updatedProfile, error: incrementError } = await supabase
             .from('user_profiles')
             .update({ credits_used: profile.credits_used + 1 })
-            .eq('id', req.account.userId);
+            .eq('id', req.account.userId)
+            .select()
+            .single();
         
         if (incrementError) {
             console.error('Error incrementing credits:', incrementError);
             // Don't fail the job, but log the error
+            // Fall back to calculated values
         }
         
+        // Use updated profile if available, otherwise calculate from original profile
+        const finalProfile = updatedProfile || profile;
+        const newCreditsUsed = updatedProfile ? updatedProfile.credits_used : profile.credits_used + 1;
+        
         // Report overage usage to Stripe if applicable
-        if (creditCheck.isOverage && profile.stripe_metered_item_id) {
+        if (creditCheck.isOverage && finalProfile.stripe_metered_item_id) {
             try {
-                await reportUsage(profile.stripe_metered_item_id, 1);
+                await reportUsage(finalProfile.stripe_metered_item_id, 1);
             } catch (stripeError) {
                 console.error('Error reporting usage to Stripe:', stripeError);
                 // Don't fail the job, overage will be tracked in credits_used
             }
         }
         
-        const creditsRemaining = Math.max(0, profile.monthly_credits - profile.credits_used - 1);
+        const creditsRemaining = Math.max(0, finalProfile.monthly_credits - newCreditsUsed);
         const isOverage = creditCheck.isOverage || false;
         
         const response = { 
@@ -159,16 +195,16 @@ router.post('/', async (req, res) => {
             outputType,
             message: 'Job created successfully',
             credits: {
-                used: profile.credits_used + 1,
+                used: newCreditsUsed,
                 remaining: creditsRemaining,
-                monthly_limit: profile.monthly_credits
+                monthly_limit: finalProfile.monthly_credits
             }
         };
         
         // Add overage info if applicable
         if (isOverage) {
             response.credits.overage = true;
-            response.credits.overage_amount = profile.credits_used + 1 - profile.monthly_credits;
+            response.credits.overage_amount = newCreditsUsed - finalProfile.monthly_credits;
         }
         
         res.status(202).json(response);
@@ -303,7 +339,7 @@ router.get('/:jobId', async (req, res) => {
         };
 
         // Get credits information from job data
-        const credits = job.data?.credits ?? 1; // Default to 1 if not set (for backwards compatibility)
+        const credits = job.data?.credits ?? 1;
 
         // Calculate estimated time if job is waiting
         const estimatedTime = await calculateEstimatedTime(job);

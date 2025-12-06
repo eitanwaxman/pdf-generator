@@ -88,10 +88,6 @@ const worker = new Worker(
             } else {
                 result.type = RESULT_TYPES.BUFFER;
                 result.data = buffer.toString('base64');
-                // Keep 'pdf' field for backward compatibility
-                if (outputType === 'pdf') {
-                    result.pdf = buffer.toString('base64');
-                }
             }
 
             return result;

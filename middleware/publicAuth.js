@@ -87,7 +87,7 @@ const authenticatePublic = async (req, res, next) => {
         console.log('=== authenticatePublic: Request authorized ===\n');
         
         // Attach account info to request object for use in controllers
-        // Use same structure as standard auth for compatibility
+        // Use same structure as standard auth
         req.account = {
             userId: account.userId,
             tier: account.tier,

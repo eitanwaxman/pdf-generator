@@ -1,45 +1,22 @@
 const crypto = require('crypto');
 const { supabase } = require('../config/supabase');
+const { createCache } = require('../lib/cache');
 
 // In-memory cache for public API key validations
-// Key: publicKey (trimmed)
-// Value: { keyData: KeyObject|null, expiresAt: number }
-const validationCache = new Map();
-const CACHE_ENABLED = (process.env.API_KEY_CACHE_ENABLED || 'true').toLowerCase() === 'true';
-const CACHE_TTL_SUCCESS = Number(process.env.API_KEY_CACHE_TTL || 45000); // 45s default
-const CACHE_TTL_FAILURE = 10000; // 10s for negative cache
-const MAX_CACHE_SIZE = Number(process.env.API_KEY_CACHE_MAX_SIZE || 1000);
+const validationCache = createCache();
 
 /**
  * Get cached validation result
  */
 function getCachedValidation(trimmedKey) {
-    if (!CACHE_ENABLED) return undefined;
-    const entry = validationCache.get(trimmedKey);
-    if (!entry) return undefined;
-    if (Date.now() >= entry.expiresAt) {
-        validationCache.delete(trimmedKey);
-        return undefined;
-    }
-    return entry.keyData; // can be null for negative cache
+    return validationCache.get(trimmedKey);
 }
 
 /**
  * Set cached validation result
  */
 function setCachedValidation(trimmedKey, keyData, ttlMs) {
-    if (!CACHE_ENABLED) return;
-    
-    // Evict oldest entry if cache is full
-    if (validationCache.size >= MAX_CACHE_SIZE) {
-        const firstKey = validationCache.keys().next().value;
-        if (firstKey) validationCache.delete(firstKey);
-    }
-    
-    validationCache.set(trimmedKey, {
-        keyData,
-        expiresAt: Date.now() + ttlMs
-    });
+    validationCache.set(trimmedKey, keyData, ttlMs);
 }
 
 /**
@@ -407,7 +384,7 @@ const updatePublicKey = async (keyId, userId, updates) => {
         
         // Invalidate cache for this key
         if (data) {
-            validationCache.delete(data.key);
+            validationCache.invalidate(data.key);
         }
         
         return data;
@@ -438,7 +415,7 @@ const deletePublicKey = async (keyId, userId) => {
         
         // Invalidate cache for this key
         if (data) {
-            validationCache.delete(data.key);
+            validationCache.invalidate(data.key);
         }
         
         return data;
