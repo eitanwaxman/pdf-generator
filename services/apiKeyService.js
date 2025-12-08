@@ -49,13 +49,13 @@ const createApiKeyForUser = async (userId, name = 'Default API Key') => {
         const apiKey = generateApiKey();
         const keyHash = hashApiKey(apiKey);
         
-        // Store the hash instead of the plain key for security
+        // Store only the hash for security - the plain key is never stored
         // The plain key is returned to the user once, then never stored
         const { data, error } = await supabase
             .from('api_keys')
             .insert({
                 user_id: userId,
-                key_hash: keyHash,  // Store hash instead of plain key
+                key_hash: keyHash,  // Store hash only for security
                 name: name,
                 created_at: new Date().toISOString()
             })
@@ -242,12 +242,38 @@ const getApiKeyForUser = async (userId) => {
     }
 };
 
+/**
+ * Delete API key for a user
+ * @param {string} userId - Supabase user ID
+ * @returns {Promise<void>}
+ */
+const deleteApiKey = async (userId) => {
+    try {
+        const { error } = await supabase
+            .from('api_keys')
+            .delete()
+            .eq('user_id', userId);
+        
+        if (error) {
+            console.error('Error deleting API key:', error);
+            throw new Error('Failed to delete API key');
+        }
+        
+        // Clear cache to invalidate any cached validations
+        validationCache.clear();
+    } catch (error) {
+        console.error('Error in deleteApiKey:', error);
+        throw error;
+    }
+};
+
 module.exports = {
     generateApiKey,
     createApiKeyForUser,
     validateApiKey,
     rotateApiKey,
     getApiKeyForUser,
+    deleteApiKey,
     hashApiKey
 };
 

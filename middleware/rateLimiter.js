@@ -104,6 +104,11 @@ const checkPerMinuteLimit = async (apiKey, tier) => {
 
 // Rate limiter wrapper that applies based on account tier
 const rateLimiter = async (req, res, next) => {
+    // Skip rate limiting for demo keys (used in documentation)
+    if (req.account?.isDemoKey) {
+        return next();
+    }
+    
     const tier = req.account?.tier || 'free';
     
     // Get identifier for rate limiting:

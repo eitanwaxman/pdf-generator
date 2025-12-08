@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from './ui/alert'
 import UsageCard from './UsageCard'
+import ApiKeyCard from './ApiKeyCard'
 import { AlertCircle } from 'lucide-react'
 
 export default function DashboardView({ session, profile, apiKey, user }) {
@@ -16,6 +17,9 @@ export default function DashboardView({ session, profile, apiKey, user }) {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* API Key Card */}
+      <ApiKeyCard session={session} emailVerified={!!user?.email_confirmed_at} />
 
       {/* Usage Card */}
       {profile && <UsageCard profile={profile} />}

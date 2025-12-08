@@ -1,6 +1,7 @@
 const express = require('express');
 const { verifySupabaseToken } = require('../../middleware/supabaseAuth');
-const { getApiKeyForUser, rotateApiKey, createApiKeyForUser } = require('../../services/apiKeyService');
+const { getApiKeyForUser, rotateApiKey, createApiKeyForUser, deleteApiKey } = require('../../services/apiKeyService');
+const { getDemoKeyForUser } = require('../../services/demoApiKeyService');
 const { supabase } = require('../../config/supabase');
 const { createCheckoutSession, updateSubscriptionPlan, cancelSubscription, getSubscription, stripe } = require('../../services/stripeService');
 const { ensureCurrentBillingPeriod } = require('../../services/creditService');
@@ -50,29 +51,74 @@ router.get('/profile', async (req, res) => {
 
 /**
  * GET /api/v1/user/api-key
- * Get user's API key
+ * Get user's API key (returns null if no key exists)
+ * Also includes demo key for documentation
  */
 router.get('/api-key', async (req, res) => {
     try {
-        let apiKey = await getApiKeyForUser(req.user.id);
+        const apiKey = await getApiKeyForUser(req.user.id);
+        const demoKey = await getDemoKeyForUser(req.user.id);
         
-        // If no API key exists, create one
         if (!apiKey) {
-            const newKey = await createApiKeyForUser(req.user.id);
-            apiKey = {
-                key: newKey.key,
-                name: 'Default API Key',
-                created_at: new Date().toISOString(),
-                last_used_at: null
-            };
+            return res.json({
+                api_key: null,
+                demo_key: demoKey
+            });
         }
         
         res.json({
-            api_key: apiKey
+            api_key: apiKey,
+            demo_key: demoKey
         });
     } catch (error) {
         console.error('Error getting API key:', error);
         res.status(500).json({ error: 'Failed to retrieve API key' });
+    }
+});
+
+/**
+ * POST /api/v1/user/api-key
+ * Create a new API key for the user
+ */
+router.post('/api-key', async (req, res) => {
+    try {
+        // Check if user already has an API key
+        const existingKey = await getApiKeyForUser(req.user.id);
+        if (existingKey) {
+            return res.status(400).json({ error: 'API key already exists. Delete it first to create a new one.' });
+        }
+        
+        const newKey = await createApiKeyForUser(req.user.id);
+        
+        res.json({
+            message: 'API key created successfully',
+            api_key: {
+                key: newKey.key,
+                name: 'Default API Key',
+                created_at: new Date().toISOString(),
+                last_used_at: null
+            }
+        });
+    } catch (error) {
+        console.error('Error creating API key:', error);
+        res.status(500).json({ error: 'Failed to create API key' });
+    }
+});
+
+/**
+ * DELETE /api/v1/user/api-key
+ * Delete user's API key
+ */
+router.delete('/api-key', async (req, res) => {
+    try {
+        await deleteApiKey(req.user.id);
+        
+        res.json({
+            message: 'API key deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting API key:', error);
+        res.status(500).json({ error: 'Failed to delete API key' });
     }
 });
 

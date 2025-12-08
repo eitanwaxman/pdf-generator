@@ -1,6 +1,6 @@
 const express = require('express');
 const { supabase } = require('../../config/supabase');
-const { createApiKeyForUser } = require('../../services/apiKeyService');
+const { createDemoKeyForUser } = require('../../services/demoApiKeyService');
 
 const router = express.Router();
 
@@ -120,12 +120,12 @@ router.post('/register', async (req, res) => {
             // Don't fail registration if profile creation fails
         }
         
-        // Create API key for the user
+        // Create demo API key for documentation (auto-created, never deleted)
         try {
-            await createApiKeyForUser(userId);
-        } catch (apiKeyError) {
-            console.error('Error creating API key:', apiKeyError);
-            // Don't fail registration if API key creation fails
+            await createDemoKeyForUser(userId);
+        } catch (demoKeyError) {
+            console.error('Error creating demo API key:', demoKeyError);
+            // Don't fail registration if demo key creation fails
         }
         
         res.status(201).json({ 

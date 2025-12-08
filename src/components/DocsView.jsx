@@ -660,7 +660,7 @@ function ApiDocs({ apiKey, isLoggedIn }) {
           {isLoggedIn && apiKey ? (
             <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
               <AlertDescription className="text-green-800 dark:text-green-200">
-                ✅ Your API key is automatically populated in the examples below
+                ✅ Your demo API key is automatically populated in the examples below. Use your live API key in the dashboard for production.
               </AlertDescription>
             </Alert>
           ) : (

@@ -48,6 +48,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [apiKey, setApiKey] = useState(null)
+  const [demoKey, setDemoKey] = useState(null)
   const [checkoutStatus, setCheckoutStatus] = useState(null)
   const hasInitialSessionRef = useRef(false)
 
@@ -226,7 +227,7 @@ function App() {
         setProfile(data.profile)
       }
 
-      // Load API key
+      // Load API key and demo key
       const keyResponse = await fetch('/api/v1/user/api-key', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -235,7 +236,16 @@ function App() {
 
       if (keyResponse.ok) {
         const keyData = await keyResponse.json()
-        setApiKey(keyData.api_key.key)
+        if (keyData.api_key) {
+          setApiKey(keyData.api_key.key)
+        } else {
+          setApiKey(null)
+        }
+        if (keyData.demo_key) {
+          setDemoKey(keyData.demo_key.key)
+        } else {
+          setDemoKey(null)
+        }
       }
     } catch (error) {
       console.error('Error loading user data:', error)
@@ -258,6 +268,7 @@ function App() {
     setUser(null)
     setProfile(null)
     setApiKey(null)
+    setDemoKey(null)
     setActiveTab('dashboard')
   }
 
@@ -266,6 +277,7 @@ function App() {
     setUser(null)
     setProfile(null)
     setApiKey(null)
+    setDemoKey(null)
     setActiveTab('dashboard')
   }
 
@@ -616,7 +628,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="docs">
-            <DocsView apiKey={apiKey} isLoggedIn={true} profile={profile} onGetStarted={() => setActiveTab('widget')} />
+            <DocsView apiKey={demoKey || apiKey} isLoggedIn={true} profile={profile} onGetStarted={() => setActiveTab('widget')} />
           </TabsContent>
 
           <TabsContent value="widget">

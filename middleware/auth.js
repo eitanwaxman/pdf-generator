@@ -1,7 +1,9 @@
 const { validateApiKey } = require('../services/apiKeyService');
+const { authenticateDemo } = require('./demoAuth');
 
 /**
  * Middleware to validate API key from request headers
+ * Handles both regular API keys and demo keys
  * Attaches account information to request object
  */
 const authenticate = async (req, res, next) => {
@@ -16,6 +18,11 @@ const authenticate = async (req, res, next) => {
     }
     
     const trimmedKey = apiKey.trim();
+    
+    // Check if this is a demo key - handle it separately
+    if (trimmedKey.startsWith('pdf_demo_')) {
+        return authenticateDemo(req, res, next);
+    }
     
     // Only log key previews in development mode
     if (process.env.NODE_ENV !== 'production') {

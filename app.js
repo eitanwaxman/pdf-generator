@@ -25,6 +25,7 @@ const port = process.env.PORT || 3000;
 // CORS configuration
 // - Secret key APIs: NO CORS allowed (server-only access)
 // - Public key APIs: CORS only for origins in user's allow list
+// - Demo key APIs: CORS only from docs pages
 // - Public auth routes: CORS allowed from any origin
 app.use(async (req, res, next) => {
     const origin = req.headers.origin;
@@ -47,8 +48,22 @@ app.use(async (req, res, next) => {
                          req.path.startsWith('/wix') || 
                          req.path.startsWith('/temp');
     
+    // Check if this is a demo key request
+    const apiKey = req.headers['x-api-key'] || req.headers['X-Api-Key'] || req.headers['X-API-Key'];
+    const isDemoKey = apiKey && apiKey.trim().startsWith('pdf_demo_');
+    
+    // For demo keys, validate origin is from docs pages
+    if (isDemoKey && origin) {
+        const { isDemoKeyOriginAllowed } = require('./services/demoApiKeyService');
+        if (isDemoKeyOriginAllowed(origin)) {
+            res.header('Access-Control-Allow-Origin', origin);
+            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, X-Public-Key');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        }
+        // If origin not allowed, no CORS headers = browser blocks request
+    }
     // For public key routes, validate origin against user's allow list
-    if (isPublicKeyRoute && origin) {
+    else if (isPublicKeyRoute && origin) {
         const publicKey = req.headers['x-public-key'] || req.headers['X-Public-Key'];
         
         if (publicKey) {
