@@ -46,7 +46,7 @@ app.use(express.urlencoded({ extended: true }));
 // Static file serving for temporary PDFs
 app.use('/temp', express.static('temp'));
 
-// Serve Wix widget files (only specific dist folders, not the entire /wix path)
+// Serve Wix widget files (specific paths only, not the entire /wix route)
 app.use('/wix/widget/dist', express.static('platforms/wix/widget/dist'));
 app.use('/wix/settings-panel/dist', express.static('platforms/wix/settings-panel/dist'));
 
@@ -86,7 +86,8 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static('dist'));
     // Serve index.html for all non-API routes
     app.get('*', (req, res, next) => {
-        // Skip SEO files, API routes, and specific static file paths
+        // Skip SEO files and API routes
+        // Only exclude specific static file paths under /wix, not all /wix routes
         if (req.path.startsWith('/api') || 
             req.path.startsWith('/temp') || 
             req.path.startsWith('/wix/widget/dist') ||
@@ -97,7 +98,6 @@ if (process.env.NODE_ENV === 'production') {
             req.path === '/manifest.json') {
             return next();
         }
-        // All other routes (including /wix, /wix/docs, etc.) should serve the React app
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
 } else {
