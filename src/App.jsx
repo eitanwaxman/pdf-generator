@@ -41,7 +41,9 @@ function App() {
   }
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
-      return pathToTab(window.location.pathname)
+      // Always prioritize URL path over localStorage for initial state
+      const tabFromPath = pathToTab(window.location.pathname)
+      return tabFromPath || 'landing'
     }
     return 'landing'
   })
@@ -53,15 +55,29 @@ function App() {
   const hasInitialSessionRef = useRef(false)
 
   useEffect(() => {
-    // Initialize tab from path, then fallback to localStorage
-    const initialTabFromPath = pathToTab(window.location.pathname)
-    if (initialTabFromPath && initialTabFromPath !== activeTab) {
-      setActiveTab(initialTabFromPath)
-    } else if (!initialTabFromPath || initialTabFromPath === 'landing') {
-      try {
-        const savedTab = localStorage.getItem('activeTab')
-        if (savedTab && savedTab !== 'landing') setActiveTab(savedTab)
-      } catch {}
+    // Initialize tab from path, prioritizing URL over localStorage
+    const pathname = window.location.pathname
+    const initialTabFromPath = pathToTab(pathname)
+    
+    // Always prioritize URL path - if path specifies a tab, use it
+    // This ensures direct navigation to /docs/wix, etc. works correctly
+    if (initialTabFromPath) {
+      // Always respect the URL path for direct navigation, even if it matches current tab
+      // This is important for subroutes like /docs/wix
+      if (initialTabFromPath !== activeTab) {
+        setActiveTab(initialTabFromPath)
+      }
+    } else {
+      // Only use localStorage if path doesn't specify a tab (e.g., root path)
+      // Never use localStorage if we're on a specific path
+      if (pathname === '/' || pathname === '') {
+        try {
+          const savedTab = localStorage.getItem('activeTab')
+          if (savedTab && savedTab !== 'landing') {
+            setActiveTab(savedTab)
+          }
+        } catch {}
+      }
     }
 
     // Check for checkout status in URL
@@ -130,12 +146,19 @@ function App() {
       setSession(session)
       
       // Only redirect to dashboard on an actual sign-in (not token refresh, not initial session)
+      // But don't redirect if user is on a docs subroute (preserve their navigation)
       if (session && event === 'SIGNED_IN' && !hasInitialSessionRef.current) {
-        setActiveTab('dashboard')
-        // Reflect in URL
-        try {
-          window.history.pushState({}, '', '/dashboard')
-        } catch {}
+        const currentPath = window.location.pathname
+        const isDocsSubroute = currentPath.startsWith('/docs/')
+        
+        // Don't redirect if user is on a docs subroute
+        if (!isDocsSubroute) {
+          setActiveTab('dashboard')
+          // Reflect in URL
+          try {
+            window.history.pushState({}, '', '/dashboard')
+          } catch {}
+        }
         loadUserData(session)
       }
       
@@ -176,10 +199,20 @@ function App() {
           widget: '/widget',
         }
         const currentPath = tabToPath[activeTab] || '/'
-        // Only preserve query params when staying on docs tab
-        const search = (activeTab === 'docs' && window.location.pathname === '/docs') 
-          ? window.location.search 
-          : ''
+        const currentPathname = window.location.pathname
+        
+        // Preserve query params and subroutes for docs tab
+        const isDocsTab = activeTab === 'docs'
+        const isDocsSubroute = currentPathname.startsWith('/docs/')
+        
+        // If we're on a docs subroute, always preserve it (don't change the URL)
+        if (isDocsTab && isDocsSubroute) {
+          // Don't modify the URL - preserve the subroute
+          return
+        }
+        
+        // Only update URL if it's different and we're not preserving a subroute
+        const search = isDocsTab ? window.location.search : ''
         const target = `${currentPath}${search}`
         if (window.location.pathname + window.location.search !== target) {
           window.history.pushState({}, '', target)
@@ -517,7 +550,7 @@ function App() {
               <div className="flex justify-between items-center mb-6">
                 <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to Home</Button>
               </div>
-              <DocsView isLoggedIn={false} profile={null} onGetStarted={() => setActiveTab('auth')} />
+              <DocsView isLoggedIn={false} profile={null} onGetStarted={() => setActiveTab('auth')} onGoToWidget={() => setActiveTab('auth')} />
             </div>
           ) : (
             <div className="container max-w-4xl mx-auto px-4 py-8">
@@ -607,7 +640,10 @@ function App() {
           </Alert>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab}
+        >
           <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="docs">Documentation</TabsTrigger>
@@ -628,7 +664,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="docs">
-            <DocsView apiKey={demoKey || apiKey} isLoggedIn={true} profile={profile} onGetStarted={() => setActiveTab('widget')} />
+            <DocsView apiKey={demoKey || apiKey} isLoggedIn={true} profile={profile} onGetStarted={() => setActiveTab('widget')} onGoToWidget={() => setActiveTab('widget')} />
           </TabsContent>
 
           <TabsContent value="widget">

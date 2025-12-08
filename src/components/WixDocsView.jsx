@@ -2,10 +2,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Button } from './ui/button'
 import { Alert, AlertDescription } from './ui/alert'
 import { Copy, Check, ExternalLink, Download, Settings, Key, CheckCircle } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) {
   const [copied, setCopied] = useState({})
+  const [isInstalledApp, setIsInstalledApp] = useState(false)
+
+  // Check for ?app=installed query parameter
+  useEffect(() => {
+    const checkQueryParam = () => {
+      const params = new URLSearchParams(window.location.search)
+      setIsInstalledApp(params.get('app') === 'installed')
+    }
+    
+    // Check on mount
+    checkQueryParam()
+    
+    // Listen for URL changes (back/forward navigation)
+    const handlePopState = () => checkQueryParam()
+    window.addEventListener('popstate', handlePopState)
+    
+    // Check periodically for query param changes (when URL is updated programmatically)
+    // This handles cases where the URL is updated via pushState/replaceState
+    const interval = setInterval(checkQueryParam, 500)
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      clearInterval(interval)
+    }
+  }, [])
 
   const handleCopy = async (text, key) => {
     try {
@@ -43,22 +68,36 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
-                1
-              </div>
+              {isInstalledApp ? (
+                <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
+                  1
+                </div>
+              )}
               <div className="flex-1">
-                <h4 className="font-semibold mb-1">Install from Wix App Market</h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Go to the Wix App Market and search for "PDF Generator" or use the direct link below.
-                </p>
-                <Button 
-                  size="sm" 
-                  onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
-                  className="mb-2"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Install from Wix App Market
-                </Button>
+                <h4 className="font-semibold mb-1">
+                  {isInstalledApp ? 'App Installed ✓' : 'Install from Wix App Market'}
+                </h4>
+                {isInstalledApp ? (
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Great! The PDF Generator app is already installed on your Wix site. Continue to the next step to configure it.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Go to the Wix App Market and search for "PDF Generator" or use the direct link below.
+                    </p>
+                    <Button 
+                      size="sm" 
+                      onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
+                      className="mb-2"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Install from Wix App Market
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -67,12 +106,12 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
                 2
               </div>
               <div className="flex-1">
-                <h4 className="font-semibold mb-1">Get Your API Key</h4>
+                <h4 className="font-semibold mb-1">Get Your Public API Key</h4>
                 <p className="text-sm text-muted-foreground mb-3">
                   {isLoggedIn ? (
-                    <>You're already signed in! Get your public API key from your dashboard.</>
+                    <>You're already signed in! Get your <strong>public API key</strong> (like for widget) from your dashboard. This is the same API key used for the widget integration.</>
                   ) : (
-                    <>Sign up for a free DocuSkribe account and get your public API key from the dashboard.</>
+                    <>Sign up for a free DocuSkribe account and get your <strong>public API key</strong> (like for widget) from the dashboard. This is the same API key used for the widget integration.</>
                   )}
                 </p>
                 {isLoggedIn ? (
@@ -123,32 +162,52 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span className="text-2xl">1.</span>
-              Installing the App
+              {isInstalledApp ? (
+                <>
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                  <span>App Installed ✓</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl">1.</span>
+                  Installing the App
+                </>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <p className="text-muted-foreground">
-                To install the PDF Generator app on your Wix site:
-              </p>
-              <ol className="list-decimal list-inside space-y-2 ml-4">
-                <li>Log in to your Wix account and open your site in the Wix Editor</li>
-                <li>Click on <strong>Add</strong> → <strong>App</strong> in the left sidebar</li>
-                <li>Search for "PDF Generator" or click the link below to go directly to the app</li>
-                <li>Click <strong>Add to Site</strong> to install the app</li>
-                <li>The app will be added to your site and you'll see it in your Apps list</li>
-              </ol>
-              <div className="mt-4">
-                <Button 
-                  onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
-                  className="w-full sm:w-auto"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Install PDF Generator from Wix App Market
-                </Button>
+            {isInstalledApp ? (
+              <div className="space-y-3">
+                <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>Great!</strong> The PDF Generator app is already installed on your Wix site. Continue to the next step to configure it with your public API key.
+                  </AlertDescription>
+                </Alert>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-muted-foreground">
+                  To install the PDF Generator app on your Wix site:
+                </p>
+                <ol className="list-decimal list-inside space-y-2 ml-4">
+                  <li>Log in to your Wix account and open your site in the Wix Editor</li>
+                  <li>Click on <strong>Add</strong> → <strong>App</strong> in the left sidebar</li>
+                  <li>Search for "PDF Generator" or click the link below to go directly to the app</li>
+                  <li>Click <strong>Add to Site</strong> to install the app</li>
+                  <li>The app will be added to your site and you'll see it in your Apps list</li>
+                </ol>
+                <div className="mt-4">
+                  <Button 
+                    onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
+                    className="w-full sm:w-auto"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Install PDF Generator from Wix App Market
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -163,7 +222,7 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <p className="text-muted-foreground">
-                The PDF Generator widget uses DocuSkribe's API to generate PDFs. You'll need a free API key to get started.
+                The PDF Generator widget uses DocuSkribe's <strong>public API</strong> to generate PDFs (the same API used for the widget integration). You'll need a free <strong>public API key</strong> to get started.
               </p>
               
               {!isLoggedIn ? (
@@ -174,18 +233,19 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
                     <li>Click <strong>Get Started</strong> or <strong>Sign Up</strong></li>
                     <li>Create your account (it's free!)</li>
                     <li>Once logged in, go to your Dashboard</li>
-                    <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>)</li>
-                    <li>Copy the API key - you'll need it in the next step</li>
+                    <li>Navigate to the <strong>Widget</strong> tab</li>
+                    <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>) - this is the same key used for widget integration</li>
+                    <li>Copy the public API key - you'll need it in the next step</li>
                   </ol>
                 </div>
               ) : (
                 <div className="bg-muted p-4 rounded-lg space-y-3">
-                  <h4 className="font-semibold">Get Your API Key</h4>
+                  <h4 className="font-semibold">Get Your Public API Key</h4>
                   <ol className="list-decimal list-inside space-y-2 ml-4 text-sm">
                     <li>Go to your Dashboard</li>
-                    <li>Navigate to the Widget tab</li>
-                    <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>)</li>
-                    <li>Copy the API key - you'll need it in the next step</li>
+                    <li>Navigate to the <strong>Widget</strong> tab</li>
+                    <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>) - this is the same key used for widget integration</li>
+                    <li>Copy the public API key - you'll need it in the next step</li>
                   </ol>
                 </div>
               )}
@@ -269,7 +329,7 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
                 <div className="border-l-4 border-blue-500 pl-4">
                   <h4 className="font-semibold mb-2">API Configuration</h4>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Paste your public API key from DocuSkribe dashboard here. Make sure your Wix domain is added to authorized domains.
+                    Paste your <strong>public API key</strong> (the same one used for widget integration) from DocuSkribe dashboard here. Make sure your Wix domain is added to authorized domains.
                   </p>
                   <div className="bg-muted p-3 rounded text-sm font-mono">
                     pk_live_...
@@ -378,7 +438,7 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
             <div>
               <h4 className="font-semibold mb-2">PDF generation fails or shows an error</h4>
               <ul className="list-disc list-inside space-y-1 ml-4 text-sm text-muted-foreground">
-                <li>Verify your API key is correct and starts with <code className="bg-background px-1 rounded">pk_live_</code></li>
+                <li>Verify your <strong>public API key</strong> is correct and starts with <code className="bg-background px-1 rounded">pk_live_</code> (this is the same key used for widget integration)</li>
                 <li>Check that your Wix domain is added to authorized domains in DocuSkribe dashboard</li>
                 <li>Ensure you have credits remaining in your DocuSkribe account</li>
                 <li>Check the browser console for detailed error messages</li>
@@ -484,14 +544,22 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
           Install the PDF Generator app and enhance your Wix site today
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button 
-            size="lg" 
-            className="bg-white text-blue-700 hover:bg-blue-50"
-            onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
-          >
-            <Download className="mr-2 h-5 w-5" />
-            Install from Wix App Market
-          </Button>
+          {!isInstalledApp && (
+            <Button 
+              size="lg" 
+              className="bg-white text-blue-700 hover:bg-blue-50"
+              onClick={() => window.open('https://wix.to/MMv9cAJ', '_blank')}
+            >
+              <Download className="mr-2 h-5 w-5" />
+              Install from Wix App Market
+            </Button>
+          )}
+          {isInstalledApp && (
+            <div className="flex items-center gap-2 text-white">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-semibold">App Installed ✓</span>
+            </div>
+          )}
           {isLoggedIn ? (
             <Button 
               size="lg" 
@@ -508,7 +576,7 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
               className="bg-white/10 border-white/30 text-white hover:bg-white/20"
               onClick={onGetStarted}
             >
-              Get Your Free API Key
+              Get Your Free Public API Key
             </Button>
           )}
         </div>

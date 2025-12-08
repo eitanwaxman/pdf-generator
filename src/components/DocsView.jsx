@@ -806,15 +806,68 @@ function WixDocsSection({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) 
   return <WixDocsView isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={onGoToDashboard} />
 }
 
-export default function DocsView({ apiKey, isLoggedIn, profile, onGetStarted }) {
-  const [activeSection, setActiveSection] = useState('api')
+export default function DocsView({ apiKey, isLoggedIn, profile, onGetStarted, onGoToWidget }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   
   const navItems = [
-    { id: 'api', label: 'API Reference', icon: Code },
-    { id: 'widget', label: 'Widget / Embed', icon: Package },
-    { id: 'wix', label: 'Wix App', icon: Wrench },
+    { id: 'api', label: 'API Reference', icon: Code, path: '/docs/api' },
+    { id: 'widget', label: 'Widget / Embed', icon: Package, path: '/docs/widget' },
+    { id: 'wix', label: 'Wix App', icon: Wrench, path: '/docs/wix' },
   ]
+
+  // Get active section from URL path
+  const getActiveSectionFromPath = () => {
+    if (typeof window === 'undefined') return 'api'
+    const pathname = window.location.pathname
+    if (pathname.startsWith('/docs/wix')) return 'wix'
+    if (pathname.startsWith('/docs/widget')) return 'widget'
+    if (pathname.startsWith('/docs/api')) return 'api'
+    if (pathname === '/docs') {
+      // Redirect /docs to /docs/api only if we're not already on a subroute
+      // This prevents redirect loops
+      const search = window.location.search
+      window.history.replaceState({}, '', '/docs/api' + search)
+      return 'api'
+    }
+    if (pathname.startsWith('/docs')) return 'api' // default to api for other /docs paths
+    return 'api'
+  }
+
+  const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath())
+
+  // Sync activeSection with URL path on mount and when pathname changes
+  useEffect(() => {
+    const handlePopState = () => {
+      const sectionFromPath = getActiveSectionFromPath()
+      if (sectionFromPath !== activeSection) {
+        setActiveSection(sectionFromPath)
+      }
+    }
+    
+    // Check on mount and redirect /docs to /docs/api if needed
+    const sectionFromPath = getActiveSectionFromPath()
+    if (sectionFromPath !== activeSection) {
+      setActiveSection(sectionFromPath)
+    }
+    
+    // Listen for browser back/forward
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  // Update URL when section changes
+  const handleSectionChange = (sectionId) => {
+    setActiveSection(sectionId)
+    const navItem = navItems.find(item => item.id === sectionId)
+    if (navItem) {
+      const newPath = navItem.path
+      const search = window.location.search // Preserve query params
+      const target = `${newPath}${search}`
+      if (window.location.pathname + window.location.search !== target) {
+        window.history.pushState({}, '', target)
+      }
+    }
+  }
   
   return (
     <div className="w-full min-h-screen">
@@ -842,7 +895,7 @@ export default function DocsView({ apiKey, isLoggedIn, profile, onGetStarted }) 
                     return (
                       <button
                         key={item.id}
-                        onClick={() => setActiveSection(item.id)}
+                        onClick={() => handleSectionChange(item.id)}
                         className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center gap-3 group ${
                           isActive
                             ? 'bg-primary text-primary-foreground font-medium shadow-sm'
@@ -871,7 +924,7 @@ export default function DocsView({ apiKey, isLoggedIn, profile, onGetStarted }) 
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => handleSectionChange(item.id)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                       isActive
                         ? 'bg-primary text-primary-foreground font-medium shadow-sm'
@@ -905,9 +958,9 @@ export default function DocsView({ apiKey, isLoggedIn, profile, onGetStarted }) 
             {activeSection === 'api' ? (
               <ApiDocs apiKey={apiKey} isLoggedIn={isLoggedIn} />
             ) : activeSection === 'widget' ? (
-              <WidgetDocs isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={() => window.location.href = '/dashboard'} />
+              <WidgetDocs isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={onGoToWidget || (() => window.location.href = '/widget')} />
             ) : (
-              <WixDocsSection isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={() => window.location.href = '/dashboard'} />
+              <WixDocsSection isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={onGoToWidget || (() => window.location.href = '/widget')} />
             )}
           </div>
         </div>
