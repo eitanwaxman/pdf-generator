@@ -3,7 +3,7 @@ import { Card, CardContent } from './ui/card'
 import { Copy, Check, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 
-export default function LandingView({ onGetStarted, onViewDocs, onViewPlans, onViewWix }) {
+export default function LandingView({ isLoggedIn, profile, onGetStarted, onViewDocs, onViewPlans, onViewWix, onGoToDashboard }) {
   const [copied, setCopied] = useState(false)
 
   const exampleCode = `curl -X POST https://api.yourdomain.com/api/v1/jobs \\
@@ -32,12 +32,18 @@ export default function LandingView({ onGetStarted, onViewDocs, onViewPlans, onV
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header with Sign In */}
+      {/* Header with Sign In / Dashboard */}
       <div className="container max-w-6xl mx-auto px-4 pt-6 pb-4">
         <div className="flex justify-end">
-          <Button variant="ghost" onClick={onGetStarted} className="hover:bg-accent/50 transition-colors">
-            Sign In
-          </Button>
+          {isLoggedIn ? (
+            <Button variant="ghost" onClick={onGoToDashboard} className="hover:bg-accent/50 transition-colors">
+              Go to Dashboard
+            </Button>
+          ) : (
+            <Button variant="ghost" onClick={onGetStarted} className="hover:bg-accent/50 transition-colors">
+              Sign In
+            </Button>
+          )}
         </div>
       </div>
       
@@ -55,12 +61,30 @@ export default function LandingView({ onGetStarted, onViewDocs, onViewPlans, onV
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 mb-14">
-          <Button size="lg" onClick={onGetStarted} className="shadow-lg hover:shadow-xl transition-shadow">
-            Get started for free
-          </Button>
-          <Button size="lg" variant="outline" onClick={onViewDocs} className="border-2 hover:bg-accent transition-colors">
-            View API docs
-          </Button>
+          {isLoggedIn ? (
+            <>
+              <Button size="lg" onClick={onGoToDashboard} className="shadow-lg hover:shadow-xl transition-shadow">
+                Go to Dashboard
+              </Button>
+              {profile?.tier === 'free' && (
+                <Button size="lg" variant="outline" onClick={onViewPlans} className="border-2 hover:bg-accent transition-colors">
+                  Upgrade Plan
+                </Button>
+              )}
+              <Button size="lg" variant="outline" onClick={onViewDocs} className="border-2 hover:bg-accent transition-colors">
+                View API docs
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="lg" onClick={onGetStarted} className="shadow-lg hover:shadow-xl transition-shadow">
+                Get started for free
+              </Button>
+              <Button size="lg" variant="outline" onClick={onViewDocs} className="border-2 hover:bg-accent transition-colors">
+                View API docs
+              </Button>
+            </>
+          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-16">
@@ -141,10 +165,18 @@ export default function LandingView({ onGetStarted, onViewDocs, onViewPlans, onV
           </CardContent>
         </Card>
 
-        <div className="text-center mt-12">
-          <p className="text-muted-foreground mb-4">Ready to scale?</p>
-          <Button variant="outline" onClick={onViewPlans}>Compare plans</Button>
-        </div>
+        {!isLoggedIn && (
+          <div className="text-center mt-12">
+            <p className="text-muted-foreground mb-4">Ready to scale?</p>
+            <Button variant="outline" onClick={onViewPlans}>Compare plans</Button>
+          </div>
+        )}
+        {isLoggedIn && profile?.tier === 'free' && (
+          <div className="text-center mt-12">
+            <p className="text-muted-foreground mb-4">Ready to scale?</p>
+            <Button variant="outline" onClick={onViewPlans}>Upgrade your plan</Button>
+          </div>
+        )}
 
         {/* Wix App Section */}
         <div className="mt-16 border-t pt-16">

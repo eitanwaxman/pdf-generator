@@ -22,11 +22,56 @@ const worker = require('./workers/pdfWorker');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS configuration for dashboard and widgets
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, X-Public-Key');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+// CORS configuration
+// - Secret key APIs: NO CORS allowed (server-only access)
+// - Public key APIs: CORS only for origins in user's allow list
+// - Public auth routes: CORS allowed from any origin
+app.use(async (req, res, next) => {
+    const origin = req.headers.origin;
+    
+    // Routes that can use public keys (CORS only for allowed origins)
+    const publicKeyRoutes = [
+        '/api/v1/jobs'  // Jobs API supports both public and secret keys
+    ];
+    
+    // Public auth routes (no authentication, CORS from any origin)
+    const publicAuthRoutes = [
+        '/api/v1/auth/register',
+        '/api/v1/auth/login',
+        '/api/v1/auth/magic-link'
+    ];
+    
+    const isPublicKeyRoute = publicKeyRoutes.some(route => req.path.startsWith(route));
+    const isPublicAuthRoute = publicAuthRoutes.some(route => req.path.startsWith(route));
+    const isStaticFile = req.path.startsWith('/cdn') || 
+                         req.path.startsWith('/wix') || 
+                         req.path.startsWith('/temp');
+    
+    // For public key routes, validate origin against user's allow list
+    if (isPublicKeyRoute && origin) {
+        const publicKey = req.headers['x-public-key'] || req.headers['X-Public-Key'];
+        
+        if (publicKey) {
+            // Validate origin by checking public key's authorized domains
+            const { validatePublicKeyOrigin } = require('./services/publicApiKeyService');
+            const isOriginAllowed = await validatePublicKeyOrigin(publicKey.trim(), origin);
+            
+            if (isOriginAllowed) {
+                res.header('Access-Control-Allow-Origin', origin);
+                res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, X-Public-Key');
+                res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            }
+            // If origin not allowed, no CORS headers = browser blocks request
+        }
+        // If no public key in headers, don't set CORS (will be handled by auth middleware)
+    } else if (isPublicAuthRoute || isStaticFile) {
+        // Public auth routes and static files: allow CORS from any origin
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, X-Public-Key');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    }
+    // For secret key APIs (user, public-keys, internal routes): NO CORS headers
+    // This prevents any cross-origin access to secret key endpoints
     
     if (req.method === 'OPTIONS') {
         return res.sendStatus(200);
@@ -39,9 +84,9 @@ app.use((req, res, next) => {
 // Stripe webhooks require raw body for signature verification
 app.use('/webhooks', stripeWebhookRouter);
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware with body size limits to prevent DoS attacks
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Static file serving for temporary PDFs
 app.use('/temp', express.static('temp'));

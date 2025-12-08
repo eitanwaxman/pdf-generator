@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button'
 import { Code, Shield, Zap, Globe } from 'lucide-react'
 
-export default function EmbedDocsView({ onGetStarted }) {
+export default function EmbedDocsView({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) {
   const exampleEmbedCode = `<!-- Docuskribe Widget -->
 <script src="https://api.docuskribe.com/cdn/widget/bundle.js"></script>
 <docuskribe-widget
@@ -37,14 +37,29 @@ export default function EmbedDocsView({ onGetStarted }) {
           with a single click. No backend required.
         </p>
         <div className="flex gap-4 justify-center pt-4">
-          <Button size="lg" onClick={onGetStarted}>
-            Get Started Free
-          </Button>
-          <Button size="lg" variant="outline" onClick={() => {
-            document.getElementById('setup-guide').scrollIntoView({ behavior: 'smooth' })
-          }}>
-            View Setup Guide
-          </Button>
+          {isLoggedIn ? (
+            <>
+              <Button size="lg" onClick={onGoToDashboard}>
+                Go to Dashboard
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => {
+                document.getElementById('setup-guide').scrollIntoView({ behavior: 'smooth' })
+              }}>
+                View Setup Guide
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="lg" onClick={onGetStarted}>
+                Get Started Free
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => {
+                document.getElementById('setup-guide').scrollIntoView({ behavior: 'smooth' })
+              }}>
+                View Setup Guide
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -116,10 +131,13 @@ export default function EmbedDocsView({ onGetStarted }) {
                 1
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold mb-2">Sign Up & Create a Public Key</h3>
+                <h3 className="font-semibold mb-2">{isLoggedIn ? 'Create a Public Key' : 'Sign Up & Create a Public Key'}</h3>
                 <p className="text-muted-foreground mb-2">
-                  Create a free account and navigate to the Widget tab in your dashboard.
-                  Create a new public key and add your website's domain to the authorized domains list.
+                  {isLoggedIn ? (
+                    <>Navigate to the Widget tab in your dashboard. Create a new public key and add your website's domain to the authorized domains list.</>
+                  ) : (
+                    <>Create a free account and navigate to the Widget tab in your dashboard. Create a new public key and add your website's domain to the authorized domains list.</>
+                  )}
                 </p>
                 <div className="bg-muted p-3 rounded mt-2">
                   <code className="text-sm">
@@ -409,11 +427,21 @@ export default function EmbedDocsView({ onGetStarted }) {
           <div className="text-center space-y-4">
             <h2 className="text-2xl font-bold">Ready to get started?</h2>
             <p className="text-primary-foreground/90">
-              Create your free account and add the widget to your site in minutes
+              {isLoggedIn ? (
+                <>Add the widget to your site in minutes</>
+              ) : (
+                <>Create your free account and add the widget to your site in minutes</>
+              )}
             </p>
-            <Button size="lg" variant="secondary" onClick={onGetStarted}>
-              Get Started Free
-            </Button>
+            {isLoggedIn ? (
+              <Button size="lg" variant="secondary" onClick={onGoToDashboard}>
+                Go to Dashboard
+              </Button>
+            ) : (
+              <Button size="lg" variant="secondary" onClick={onGetStarted}>
+                Get Started Free
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

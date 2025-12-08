@@ -428,50 +428,73 @@ function App() {
   const seoConfig = getSEOConfig()
   const structuredData = getStructuredData()
 
-  // Not logged in - show landing by default, with options to auth/docs
-  if (!session) {
-    if (activeTab === 'wix') {
-      return (
-        <>
-          <SEO {...seoConfig} />
-          {structuredData && <StructuredData data={structuredData} />}
-          <WixLandingView 
-            onGetStarted={() => setActiveTab('auth')}
-            onViewDocs={() => setActiveTab('wix-docs')}
-          />
-        </>
-      )
-    }
-    if (activeTab === 'wix-docs') {
-      return (
-        <>
-          <SEO {...seoConfig} />
-          {structuredData && <StructuredData data={structuredData} />}
-          <div className="min-h-screen bg-background">
-            <div className="container max-w-4xl mx-auto px-4 py-8">
-              <div className="flex justify-between items-center mb-6">
-                <Button variant="ghost" onClick={() => setActiveTab('wix')}>← Back to Wix App</Button>
-              </div>
-              <WixDocsView onGetStarted={() => setActiveTab('auth')} />
+  // Show landing/docs pages for both logged in and logged out users
+  // Content will be adjusted based on login status
+  const isLoggedIn = !!session
+  
+  if (activeTab === 'wix') {
+    return (
+      <>
+        <SEO {...seoConfig} />
+        {structuredData && <StructuredData data={structuredData} />}
+        <WixLandingView 
+          isLoggedIn={isLoggedIn}
+          profile={profile}
+          onGetStarted={() => setActiveTab('auth')}
+          onViewDocs={() => setActiveTab('wix-docs')}
+          onGoToDashboard={() => setActiveTab('dashboard')}
+        />
+      </>
+    )
+  }
+  
+  if (activeTab === 'wix-docs') {
+    return (
+      <>
+        <SEO {...seoConfig} />
+        {structuredData && <StructuredData data={structuredData} />}
+        <div className="min-h-screen bg-background">
+          <div className="container max-w-4xl mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <Button variant="ghost" onClick={() => setActiveTab('wix')}>← Back to Wix App</Button>
+              {isLoggedIn && (
+                <Button variant="outline" onClick={() => setActiveTab('dashboard')}>
+                  Go to Dashboard
+                </Button>
+              )}
             </div>
+            <WixDocsView 
+              isLoggedIn={isLoggedIn}
+              profile={profile}
+              onGetStarted={() => setActiveTab('auth')}
+              onGoToDashboard={() => setActiveTab('dashboard')}
+            />
           </div>
-        </>
-      )
-    }
-    if (activeTab === 'landing') {
-      return (
-        <>
-          <SEO {...seoConfig} />
-          {structuredData && <StructuredData data={structuredData} />}
-          <LandingView 
-            onGetStarted={() => setActiveTab('auth')}
-            onViewDocs={() => setActiveTab('docs')}
-            onViewPlans={() => setActiveTab('auth')}
-            onViewWix={() => setActiveTab('wix')}
-          />
-        </>
-      )
-    }
+        </div>
+      </>
+    )
+  }
+  
+  if (activeTab === 'landing') {
+    return (
+      <>
+        <SEO {...seoConfig} />
+        {structuredData && <StructuredData data={structuredData} />}
+        <LandingView 
+          isLoggedIn={isLoggedIn}
+          profile={profile}
+          onGetStarted={() => setActiveTab('auth')}
+          onViewDocs={() => setActiveTab('docs')}
+          onViewPlans={() => isLoggedIn ? setActiveTab('plans') : setActiveTab('auth')}
+          onViewWix={() => setActiveTab('wix')}
+          onGoToDashboard={() => setActiveTab('dashboard')}
+        />
+      </>
+    )
+  }
+  
+  // Not logged in - show auth/docs pages
+  if (!session) {
     return (
       <>
         <SEO {...seoConfig} />
@@ -482,7 +505,7 @@ function App() {
               <div className="flex justify-between items-center mb-6">
                 <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to Home</Button>
               </div>
-              <DocsView isLoggedIn={false} onGetStarted={() => setActiveTab('auth')} />
+              <DocsView isLoggedIn={false} profile={null} onGetStarted={() => setActiveTab('auth')} />
             </div>
           ) : (
             <div className="container max-w-4xl mx-auto px-4 py-8">
@@ -593,7 +616,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="docs">
-            <DocsView apiKey={apiKey} isLoggedIn={true} onGetStarted={() => setActiveTab('widget')} />
+            <DocsView apiKey={apiKey} isLoggedIn={true} profile={profile} onGetStarted={() => setActiveTab('widget')} />
           </TabsContent>
 
           <TabsContent value="widget">

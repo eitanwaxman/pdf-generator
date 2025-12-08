@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from './ui/alert'
 import { Copy, Check, ExternalLink, Download, Settings, Key, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 
-export default function WixDocsView({ onGetStarted }) {
+export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) {
   const [copied, setCopied] = useState({})
 
   const handleCopy = async (text, key) => {
@@ -69,17 +69,33 @@ export default function WixDocsView({ onGetStarted }) {
               <div className="flex-1">
                 <h4 className="font-semibold mb-1">Get Your API Key</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Sign up for a free DocuSkribe account and get your public API key from the dashboard.
+                  {isLoggedIn ? (
+                    <>You're already signed in! Get your public API key from your dashboard.</>
+                  ) : (
+                    <>Sign up for a free DocuSkribe account and get your public API key from the dashboard.</>
+                  )}
                 </p>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => window.open('https://www.docuskribe.com/dashboard', '_blank')}
-                  className="mb-2"
-                >
-                  <Key className="h-4 w-4 mr-2" />
-                  Get API Key (Free)
-                </Button>
+                {isLoggedIn ? (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={onGoToDashboard}
+                    className="mb-2"
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Go to Dashboard
+                  </Button>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => window.open('https://www.docuskribe.com/dashboard', '_blank')}
+                    className="mb-2"
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Get API Key (Free)
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -150,17 +166,29 @@ export default function WixDocsView({ onGetStarted }) {
                 The PDF Generator widget uses DocuSkribe's API to generate PDFs. You'll need a free API key to get started.
               </p>
               
-              <div className="bg-muted p-4 rounded-lg space-y-3">
-                <h4 className="font-semibold">Create a DocuSkribe Account</h4>
-                <ol className="list-decimal list-inside space-y-2 ml-4 text-sm">
-                  <li>Visit <a href="https://www.docuskribe.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">www.docuskribe.com</a></li>
-                  <li>Click <strong>Get Started</strong> or <strong>Sign Up</strong></li>
-                  <li>Create your account (it's free!)</li>
-                  <li>Once logged in, go to your Dashboard</li>
-                  <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>)</li>
-                  <li>Copy the API key - you'll need it in the next step</li>
-                </ol>
-              </div>
+              {!isLoggedIn ? (
+                <div className="bg-muted p-4 rounded-lg space-y-3">
+                  <h4 className="font-semibold">Create a DocuSkribe Account</h4>
+                  <ol className="list-decimal list-inside space-y-2 ml-4 text-sm">
+                    <li>Visit <a href="https://www.docuskribe.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">www.docuskribe.com</a></li>
+                    <li>Click <strong>Get Started</strong> or <strong>Sign Up</strong></li>
+                    <li>Create your account (it's free!)</li>
+                    <li>Once logged in, go to your Dashboard</li>
+                    <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>)</li>
+                    <li>Copy the API key - you'll need it in the next step</li>
+                  </ol>
+                </div>
+              ) : (
+                <div className="bg-muted p-4 rounded-lg space-y-3">
+                  <h4 className="font-semibold">Get Your API Key</h4>
+                  <ol className="list-decimal list-inside space-y-2 ml-4 text-sm">
+                    <li>Go to your Dashboard</li>
+                    <li>Navigate to the Widget tab</li>
+                    <li>Find your <strong>Public API Key</strong> (starts with <code className="bg-background px-1 rounded">pk_live_</code>)</li>
+                    <li>Copy the API key - you'll need it in the next step</li>
+                  </ol>
+                </div>
+              )}
 
               <Alert>
                 <AlertDescription>
@@ -170,17 +198,29 @@ export default function WixDocsView({ onGetStarted }) {
               </Alert>
 
               <div className="flex gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => window.open('https://www.docuskribe.com/dashboard', '_blank')}
-                >
-                  <Key className="h-4 w-4 mr-2" />
-                  Open DocuSkribe Dashboard
-                </Button>
-                {onGetStarted && (
-                  <Button onClick={onGetStarted}>
-                    Sign Up for DocuSkribe
+                {isLoggedIn ? (
+                  <Button 
+                    variant="outline"
+                    onClick={onGoToDashboard}
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Go to Dashboard
                   </Button>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline"
+                      onClick={() => window.open('https://www.docuskribe.com/dashboard', '_blank')}
+                    >
+                      <Key className="h-4 w-4 mr-2" />
+                      Open DocuSkribe Dashboard
+                    </Button>
+                    {onGetStarted && (
+                      <Button onClick={onGetStarted}>
+                        Sign Up for DocuSkribe
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -452,7 +492,16 @@ export default function WixDocsView({ onGetStarted }) {
             <Download className="mr-2 h-5 w-5" />
             Install from Wix App Market
           </Button>
-          {onGetStarted && (
+          {isLoggedIn ? (
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+              onClick={onGoToDashboard}
+            >
+              Go to Dashboard
+            </Button>
+          ) : onGetStarted && (
             <Button 
               size="lg" 
               variant="outline" 

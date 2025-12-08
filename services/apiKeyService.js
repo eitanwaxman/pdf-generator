@@ -20,6 +20,15 @@ function invalidateCacheForApiKey(apiKey) {
 }
 
 /**
+ * Hash an API key using SHA-256
+ * @param {string} apiKey - The API key to hash
+ * @returns {string} - The hashed key (hex string)
+ */
+const hashApiKey = (apiKey) => {
+    return crypto.createHash('sha256').update(apiKey.trim()).digest('hex');
+};
+
+/**
  * Generate a secure random API key with prefix
  * Format: pdf_live_<random_hex>
  */
@@ -38,12 +47,15 @@ const generateApiKey = () => {
 const createApiKeyForUser = async (userId, name = 'Default API Key') => {
     try {
         const apiKey = generateApiKey();
+        const keyHash = hashApiKey(apiKey);
         
+        // Store the hash instead of the plain key for security
+        // The plain key is returned to the user once, then never stored
         const { data, error } = await supabase
             .from('api_keys')
             .insert({
                 user_id: userId,
-                key: apiKey,
+                key_hash: keyHash,  // Store hash instead of plain key
                 name: name,
                 created_at: new Date().toISOString()
             })
@@ -55,8 +67,10 @@ const createApiKeyForUser = async (userId, name = 'Default API Key') => {
             throw new Error('Failed to create API key');
         }
         
+        // Return the plain key to the user (they see it once)
+        // The hash is stored in the database
         return {
-            key: data.key,
+            key: apiKey,
             id: data.id
         };
     } catch (error) {
@@ -95,17 +109,22 @@ const validateApiKey = async (apiKey) => {
             return cached;
         }
 
-        // Query API key with user profile in a single JOIN query
+        // Hash the provided key for comparison
+        const keyHash = hashApiKey(trimmedKey);
+
+        // Query API key by hash only (no backward compatibility)
         const { data: keyData, error: keyError } = await supabase
             .from('api_keys')
-            .select('id, user_id, key, name, last_used_at, user_profiles(tier)')
-            .eq('key', trimmedKey)
+            .select('id, user_id, key_hash, name, last_used_at, user_profiles(tier)')
+            .eq('key_hash', keyHash)
             .single();
         
         if (keyError || !keyData) {
             // PGRST116 means no rows found - this is expected for invalid keys
             if (keyError && keyError.code === 'PGRST116') {
-                console.log('validateApiKey: API key not found in database');
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('validateApiKey: API key not found in database');
+                }
             } else {
                 console.error('validateApiKey: Error fetching API key:', {
                     code: keyError?.code,
@@ -119,7 +138,9 @@ const validateApiKey = async (apiKey) => {
             return null;
         }
 
-        console.log('validateApiKey: Found API key for user:', keyData.user_id);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('validateApiKey: Found API key for user:', keyData.user_id);
+        }
         
         // Extract tier from joined profile data
         const profileData = Array.isArray(keyData.user_profiles) 
@@ -141,11 +162,12 @@ const validateApiKey = async (apiKey) => {
             console.error('validateApiKey: Error fetching user data:', userError);
         }
         
+        // Use the trimmed key for the account object (not the stored hash)
         const account = {
             userId: keyData.user_id,
             tier: profileData?.tier || 'free',
             name: userData?.user?.email || 'Unknown User',
-            apiKey: keyData.key
+            apiKey: trimmedKey  // Use the provided key, not the stored hash
         };
 
         // Cache successful validation (uses default success TTL from cache utility)
@@ -192,14 +214,15 @@ const rotateApiKey = async (userId) => {
 
 /**
  * Get API key for a user
+ * Note: This returns metadata only. The actual key is only shown once during creation.
  * @param {string} userId - Supabase user ID
- * @returns {Promise<{key: string, name: string, created_at: string, last_used_at: string} | null>}
+ * @returns {Promise<{name: string, created_at: string, last_used_at: string} | null>}
  */
 const getApiKeyForUser = async (userId) => {
     try {
         const { data, error } = await supabase
             .from('api_keys')
-            .select('key, name, created_at, last_used_at')
+            .select('name, created_at, last_used_at')
             .eq('user_id', userId)
             .single();
         
@@ -207,7 +230,12 @@ const getApiKeyForUser = async (userId) => {
             return null;
         }
         
-        return data;
+        // Don't return the key or hash - keys are only shown once during creation
+        return {
+            name: data.name,
+            created_at: data.created_at,
+            last_used_at: data.last_used_at
+        };
     } catch (error) {
         console.error('Error getting API key:', error);
         return null;
@@ -219,6 +247,7 @@ module.exports = {
     createApiKeyForUser,
     validateApiKey,
     rotateApiKey,
-    getApiKeyForUser
+    getApiKeyForUser,
+    hashApiKey
 };
 

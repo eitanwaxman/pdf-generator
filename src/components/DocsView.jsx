@@ -797,16 +797,16 @@ function ApiDocs({ apiKey, isLoggedIn }) {
 }
 
 // Widget Documentation Component (wrapper for EmbedDocsView)
-function WidgetDocs({ onGetStarted }) {
-  return <EmbedDocsView onGetStarted={onGetStarted} />
+function WidgetDocs({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) {
+  return <EmbedDocsView isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={onGoToDashboard} />
 }
 
 // Wix Documentation Component
-function WixDocsSection({ onGetStarted }) {
-  return <WixDocsView onGetStarted={onGetStarted} />
+function WixDocsSection({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) {
+  return <WixDocsView isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={onGoToDashboard} />
 }
 
-export default function DocsView({ apiKey, isLoggedIn, onGetStarted }) {
+export default function DocsView({ apiKey, isLoggedIn, profile, onGetStarted }) {
   const [activeSection, setActiveSection] = useState('api')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   
@@ -905,9 +905,9 @@ export default function DocsView({ apiKey, isLoggedIn, onGetStarted }) {
             {activeSection === 'api' ? (
               <ApiDocs apiKey={apiKey} isLoggedIn={isLoggedIn} />
             ) : activeSection === 'widget' ? (
-              <WidgetDocs onGetStarted={onGetStarted} />
+              <WidgetDocs isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={() => window.location.href = '/dashboard'} />
             ) : (
-              <WixDocsSection onGetStarted={onGetStarted} />
+              <WixDocsSection isLoggedIn={isLoggedIn} profile={profile} onGetStarted={onGetStarted} onGoToDashboard={() => window.location.href = '/dashboard'} />
             )}
           </div>
         </div>

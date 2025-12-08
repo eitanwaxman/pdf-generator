@@ -38,10 +38,7 @@ function generatePublicKey() {
  * Also supports localhost:* for development
  */
 function matchesDomain(origin, domainPattern) {
-    console.log(`  🔍 matchesDomain: Comparing origin="${origin}" with pattern="${domainPattern}"`);
-    
     if (!origin || !domainPattern) {
-        console.log(`  ❌ matchesDomain: Missing origin or pattern (origin: ${origin}, pattern: ${domainPattern})`);
         return false;
     }
     
@@ -51,34 +48,28 @@ function matchesDomain(origin, domainPattern) {
         const url = new URL(origin);
         hostname = url.hostname;
         port = url.port;
-        console.log(`  📋 matchesDomain: Parsed origin - hostname="${hostname}", port="${port || '(default)'}"`);
     } catch (e) {
         // If origin is not a valid URL, try to parse it as hostname:port
         const parts = origin.split(':');
         hostname = parts[0];
         port = parts[1] || '';
-        console.log(`  📋 matchesDomain: Parsed origin as hostname:port - hostname="${hostname}", port="${port || '(none)'}"`);
     }
     
     // Exact match
     if (hostname === domainPattern) {
-        console.log(`  ✅ matchesDomain: Exact hostname match: "${hostname}" === "${domainPattern}"`);
         return true;
     }
     
     // Localhost with wildcard port: localhost:*
     if (domainPattern === 'localhost:*' && hostname === 'localhost') {
-        console.log(`  ✅ matchesDomain: Localhost wildcard match: "${hostname}" matches "${domainPattern}"`);
         return true;
     }
     if (domainPattern.startsWith('localhost:') && hostname === 'localhost') {
         const patternPort = domainPattern.split(':')[1];
         if (patternPort === '*') {
-            console.log(`  ✅ matchesDomain: Localhost wildcard port match`);
             return true;
         }
         if (patternPort === port) {
-            console.log(`  ✅ matchesDomain: Localhost port match: "${port}" === "${patternPort}"`);
             return true;
         }
     }
@@ -86,14 +77,11 @@ function matchesDomain(origin, domainPattern) {
     // Wildcard subdomain: *.example.com
     if (domainPattern.startsWith('*.')) {
         const baseDomain = domainPattern.substring(2);
-        console.log(`  🔍 matchesDomain: Checking wildcard pattern - baseDomain="${baseDomain}"`);
         // Match exact subdomain or nested subdomains
         if (hostname.endsWith('.' + baseDomain)) {
-            console.log(`  ✅ matchesDomain: Wildcard subdomain match: "${hostname}" ends with ".${baseDomain}"`);
             return true;
         }
         if (hostname === baseDomain) {
-            console.log(`  ✅ matchesDomain: Wildcard base domain match: "${hostname}" === "${baseDomain}"`);
             return true;
         }
     }
@@ -101,11 +89,9 @@ function matchesDomain(origin, domainPattern) {
     // Domain with port
     const hostnameWithPort = port ? `${hostname}:${port}` : hostname;
     if (hostnameWithPort === domainPattern) {
-        console.log(`  ✅ matchesDomain: Hostname with port match: "${hostnameWithPort}" === "${domainPattern}"`);
         return true;
     }
     
-    console.log(`  ❌ matchesDomain: No match found for origin="${origin}" (hostname="${hostname}") with pattern="${domainPattern}"`);
     return false;
 }
 
@@ -113,28 +99,87 @@ function matchesDomain(origin, domainPattern) {
  * Validate origin against authorized domains
  */
 function isOriginAuthorized(origin, authorizedDomains) {
-    console.log(`\n🔐 isOriginAuthorized: Checking origin="${origin}" against authorized domains:`, authorizedDomains);
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`\n🔐 isOriginAuthorized: Checking origin="${origin}" against authorized domains:`, authorizedDomains);
+    }
     
     if (!origin || !Array.isArray(authorizedDomains)) {
-        console.log(`  ❌ isOriginAuthorized: Invalid input - origin: ${origin}, authorizedDomains: ${Array.isArray(authorizedDomains) ? 'array' : typeof authorizedDomains}`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`  ❌ isOriginAuthorized: Invalid input - origin: ${origin}, authorizedDomains: ${Array.isArray(authorizedDomains) ? 'array' : typeof authorizedDomains}`);
+        }
         return false;
     }
     if (authorizedDomains.length === 0) {
-        console.log(`  ❌ isOriginAuthorized: No authorized domains configured`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`  ❌ isOriginAuthorized: No authorized domains configured`);
+        }
         return false;
     }
     
-    console.log(`  🔍 isOriginAuthorized: Checking ${authorizedDomains.length} domain pattern(s)...`);
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`  🔍 isOriginAuthorized: Checking ${authorizedDomains.length} domain pattern(s)...`);
+    }
     const result = authorizedDomains.some(domain => matchesDomain(origin, domain));
     
-    if (result) {
-        console.log(`  ✅ isOriginAuthorized: Origin authorized!`);
-    } else {
-        console.log(`  ❌ isOriginAuthorized: Origin NOT authorized - none of the patterns matched`);
+    if (process.env.NODE_ENV !== 'production') {
+        if (result) {
+            console.log(`  ✅ isOriginAuthorized: Origin authorized!`);
+        } else {
+            console.log(`  ❌ isOriginAuthorized: Origin NOT authorized - none of the patterns matched`);
+        }
     }
     
     return result;
 }
+
+/**
+ * Validate if an origin is allowed for a public key (for CORS middleware)
+ * This is a lightweight check that doesn't do full authentication
+ * @param {string} publicKey - The public API key
+ * @param {string} origin - The origin to validate
+ * @returns {Promise<boolean>} - True if origin is allowed
+ */
+const validatePublicKeyOrigin = async (publicKey, origin) => {
+    try {
+        if (!publicKey || !origin) {
+            return false;
+        }
+
+        const trimmedKey = publicKey.trim();
+        
+        // Validate key format
+        if (!trimmedKey.startsWith('pk_live_')) {
+            return false;
+        }
+
+        // Check cache first
+        const cached = getCachedValidation(trimmedKey);
+        if (cached !== undefined && cached !== null) {
+            // Use cached authorized domains
+            return isOriginAuthorized(origin, cached.authorized_domains || []);
+        }
+
+        // Query public API key to get authorized domains
+        const { data: keyData, error } = await supabase
+            .from('public_api_keys')
+            .select('authorized_domains, enabled')
+            .eq('key', trimmedKey)
+            .eq('enabled', true)
+            .single();
+        
+        if (error || !keyData) {
+            return false;
+        }
+
+        // Validate origin against authorized domains
+        return isOriginAuthorized(origin, keyData.authorized_domains || []);
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('Error validating public key origin:', error);
+        }
+        return false;
+    }
+};
 
 /**
  * Create a new public API key for a user
@@ -428,6 +473,7 @@ const deletePublicKey = async (keyId, userId) => {
 module.exports = {
     createPublicKeyForUser,
     validatePublicKey,
+    validatePublicKeyOrigin,
     listPublicKeysForUser,
     updatePublicKey,
     deletePublicKey,

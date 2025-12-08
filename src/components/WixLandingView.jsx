@@ -2,7 +2,7 @@ import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
 import { Check, Download, Settings, Zap, Shield, FileText, Smartphone, Monitor } from 'lucide-react'
 
-export default function WixLandingView({ onGetStarted, onViewDocs }) {
+export default function WixLandingView({ isLoggedIn, profile, onGetStarted, onViewDocs, onGoToDashboard }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -39,6 +39,16 @@ export default function WixLandingView({ onGetStarted, onViewDocs }) {
               >
                 View Documentation
               </Button>
+              {isLoggedIn && (
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 text-lg px-8 py-6 h-auto"
+                  onClick={onGoToDashboard}
+                >
+                  Go to Dashboard
+                </Button>
+              )}
             </div>
             <p className="text-sm text-blue-200 mt-4">
               Free to install • No credit card required
@@ -231,8 +241,11 @@ export default function WixLandingView({ onGetStarted, onViewDocs }) {
               </div>
               <h3 className="font-semibold text-lg mb-2">Get Your API Key</h3>
               <p className="text-sm text-muted-foreground">
-                Sign up for a free DocuSkribe account and get your public API key. 
-                Add it to the widget settings in Wix Editor.
+                {isLoggedIn ? (
+                  <>You're already signed in! Get your public API key from your dashboard and add it to the widget settings in Wix Editor.</>
+                ) : (
+                  <>Sign up for a free DocuSkribe account and get your public API key. Add it to the widget settings in Wix Editor.</>
+                )}
               </p>
             </div>
             <div className="text-center">
@@ -273,6 +286,16 @@ export default function WixLandingView({ onGetStarted, onViewDocs }) {
             >
               Read Setup Guide
             </Button>
+            {isLoggedIn && (
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20 text-lg px-8 py-6 h-auto"
+                onClick={onGoToDashboard}
+              >
+                Go to Dashboard
+              </Button>
+            )}
           </div>
         </div>
 
