@@ -158,7 +158,7 @@ const PdfButton = ({ config }) => {
       } else if (result.result) {
         // Direct result (synchronous generation)
         console.log('[PDF Button] Direct result received');
-        const outputData = result.result.pdf || result.result.screenshot;
+        const outputData = result.result.data;
         await handlePdfResult(outputData, config.outputType);
       } else {
         console.error('[PDF Button] ❌ Invalid response structure:', result);
@@ -241,8 +241,8 @@ const PdfButton = ({ config }) => {
 
       if (status.status === 'completed') {
         console.log('[PDF Button] ✅ Job completed successfully');
-        // Main API returns result.pdf or result.screenshot depending on output type
-        const outputData = status.result?.pdf || status.result?.screenshot;
+        // Backend returns result.data for buffer type (responseType is always 'buffer')
+        const outputData = status.result?.data;
         if (!outputData) {
           throw new Error('No output data in completed job result');
         }

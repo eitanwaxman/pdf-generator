@@ -111,8 +111,8 @@ const PdfButton = ({ config }) => {
 
       // Poll for job completion
       if (result.jobId) {
-        const output = await pollForJobCompletion(apiUrl, result.jobId, config.publicKey);
-        await handleOutput(output, config.outputType);
+        const { outputData, result: jobResult } = await pollForJobCompletion(apiUrl, result.jobId, config.publicKey);
+        await handleOutput(outputData, config.outputType, jobResult);
       } else {
         throw new Error('Invalid response from API');
       }
@@ -172,7 +172,12 @@ const PdfButton = ({ config }) => {
       }
 
       if (status.status === 'completed') {
-        return status.result;
+        // Backend returns result.data for buffer type (responseType is always 'buffer')
+        const outputData = status.result?.data;
+        if (!outputData) {
+          throw new Error('No output data in completed job result');
+        }
+        return { outputData, result: status.result };
       } else if (status.status === 'failed') {
         throw new Error(status.error || 'Generation failed');
       }
@@ -182,21 +187,21 @@ const PdfButton = ({ config }) => {
     throw new Error('Generation timed out');
   };
 
-  const handleOutput = async (result, outputType) => {
+  const handleOutput = async (outputBase64, outputType, jobResult) => {
     try {
       let blob, filename;
       
       if (outputType === 'screenshot') {
         // Handle screenshot
-        const screenshotBase64 = result.screenshot;
-        const imageType = result.type || 'png';
+        const imageType = jobResult?.outputType === 'screenshot' 
+          ? (config.screenshotType || 'png')
+          : 'png';
         const contentType = `image/${imageType}`;
-        blob = base64ToBlob(screenshotBase64, contentType);
+        blob = base64ToBlob(outputBase64, contentType);
         filename = `screenshot-${Date.now()}.${imageType}`;
       } else {
         // Handle PDF
-        const pdfBase64 = result.pdf;
-        blob = base64ToBlob(pdfBase64, 'application/pdf');
+        blob = base64ToBlob(outputBase64, 'application/pdf');
         filename = `document-${Date.now()}.pdf`;
       }
 
