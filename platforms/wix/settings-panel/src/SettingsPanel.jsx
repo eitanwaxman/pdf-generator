@@ -1137,10 +1137,12 @@ const SettingsPanel = () => {
                 color: settings.buttonAdvancedCssEnabled ? '#111' : '#888'
               }}
             />
-            <div className="css-preview">
-              <div style={{ fontWeight: 600, marginBottom: '6px', color: '#162d3d' }}>Generated CSS</div>
-              <pre>{computedButtonCss || 'Defaults only (no overrides set).'}</pre>
-            </div>
+            {settings.buttonAdvancedCssEnabled && (
+              <div className="css-preview">
+                <div style={{ fontWeight: 600, marginBottom: '6px', color: '#162d3d' }}>Generated CSS</div>
+                <pre>{computedButtonCss || 'Defaults only (no overrides set).'}</pre>
+              </div>
+            )}
           </div>
         </>
       )}
