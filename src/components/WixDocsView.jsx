@@ -396,11 +396,176 @@ export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToD
           </CardContent>
         </Card>
 
-        {/* Step 5: Publishing */}
+        {/* Step 5: Using Velo Code (Advanced) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="text-2xl">5.</span>
+              Setting Attributes with Velo Code (Advanced)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                You can dynamically set widget attributes using Wix Velo code. This is useful for updating settings based on user interactions, page context, or dynamic data.
+              </p>
+
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h4 className="font-semibold mb-2">Getting the Widget Element</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  First, make sure your widget has an ID set in the Wix Editor. Then use <code className="bg-muted px-1 rounded">$w()</code> to select it:
+                </p>
+                <div className="bg-muted p-4 rounded-lg">
+                  <pre className="text-sm overflow-x-auto"><code>{`// Get the widget element (replace "myDocuskribeWidget" with your widget's ID)
+const widget = $w("#myDocuskribeWidget");`}</code></pre>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-green-500 pl-4">
+                <h4 className="font-semibold mb-2">Setting Attributes</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Use the <code className="bg-muted px-1 rounded">setAttribute()</code> method to update any widget attribute:
+                </p>
+                <div className="bg-muted p-4 rounded-lg">
+                  <pre className="text-sm overflow-x-auto"><code>{`// Set button text
+widget.setAttribute("button-text", "Download PDF");
+
+// Set PDF format
+widget.setAttribute("pdf-format", "Letter");
+
+// Set custom URL source
+widget.setAttribute("url-source", "custom");
+widget.setAttribute("custom-url", "https://example.com/page");
+
+// Set margins
+widget.setAttribute("pdf-margin-top", "20px");
+widget.setAttribute("pdf-margin-right", "20px");
+widget.setAttribute("pdf-margin-bottom", "20px");
+widget.setAttribute("pdf-margin-left", "20px");
+
+// Set form factor
+widget.setAttribute("form-factor", "mobile");
+
+// Set output type
+widget.setAttribute("output-type", "screenshot");
+widget.setAttribute("screenshot-type", "png");
+widget.setAttribute("screenshot-quality", "95");`}</code></pre>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-purple-500 pl-4">
+                <h4 className="font-semibold mb-2">Setting the Data Attribute</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  The <code className="bg-muted px-1 rounded">data</code> attribute accepts a JSON string. When changed, it automatically updates the data property sent to the API:
+                </p>
+                <div className="bg-muted p-4 rounded-lg">
+                  <pre className="text-sm overflow-x-auto"><code>{`// Set data attribute (must be valid JSON string)
+const dataObject = {
+  userId: "12345",
+  orderId: "ORD-67890",
+  customParam: "value"
+};
+
+widget.setAttribute("data", JSON.stringify(dataObject));
+
+// When the attribute changes, the widget automatically:
+// 1. Parses the JSON
+// 2. Updates the internal config
+// 3. Uses the new data in the next API call`}</code></pre>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-orange-500 pl-4">
+                <h4 className="font-semibold mb-2">Example: Dynamic Data Based on Page Context</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Here's a complete example that sets data based on the current page or user context:
+                </p>
+                <div className="bg-muted p-4 rounded-lg">
+                  <pre className="text-sm overflow-x-auto"><code>{`import wixUsers from 'wix-users';
+
+$w.onReady(function () {
+  const widget = $w("#myDocuskribeWidget");
+  
+  // Get current user information
+  const user = wixUsers.currentUser;
+  
+  // Set data attribute with user and page context
+  const dynamicData = {
+    pageUrl: window.location.href,
+    timestamp: new Date().toISOString(),
+    userId: user ? user.id : "anonymous",
+    pageTitle: document.title
+  };
+  
+  widget.setAttribute("data", JSON.stringify(dynamicData));
+  
+  // Update button text based on context
+  widget.setAttribute("button-text", "Download This Page as PDF");
+});`}</code></pre>
+                </div>
+              </div>
+
+              <div className="border-l-4 border-indigo-500 pl-4">
+                <h4 className="font-semibold mb-2">Example: Update on Button Click</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Update widget attributes when another element is clicked:
+                </p>
+                <div className="bg-muted p-4 rounded-lg">
+                  <pre className="text-sm overflow-x-auto"><code>{`$w.onReady(function () {
+  const widget = $w("#myDocuskribeWidget");
+  const updateButton = $w("#updateButton");
+  
+  updateButton.onClick(() => {
+    // Update data with current form values or selections
+    const formData = {
+      selectedOption: $w("#dropdown").value,
+      textInput: $w("#textInput").value
+    };
+    
+    widget.setAttribute("data", JSON.stringify(formData));
+    widget.setAttribute("button-text", "Generate PDF with Current Settings");
+  });
+});`}</code></pre>
+                </div>
+              </div>
+
+              <Alert>
+                <AlertDescription>
+                  <strong>Note:</strong> When you change the <code className="bg-background px-1 rounded">data</code> attribute, the widget automatically updates its internal configuration. The new data will be used the next time the PDF generation button is clicked.
+                </AlertDescription>
+              </Alert>
+
+              <div className="border-l-4 border-red-500 pl-4">
+                <h4 className="font-semibold mb-2">Available Attributes</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Here are all the attributes you can set via Velo code:
+                </p>
+                <ul className="list-disc list-inside space-y-1 ml-4 text-sm text-muted-foreground">
+                  <li><code className="bg-background px-1 rounded">public-api-key</code> - Your DocuSkribe public API key</li>
+                  <li><code className="bg-background px-1 rounded">url-source</code> - "current" or "custom"</li>
+                  <li><code className="bg-background px-1 rounded">custom-url</code> - URL to convert (when url-source is "custom")</li>
+                  <li><code className="bg-background px-1 rounded">pdf-format</code> - "A4", "Letter", "Legal", etc.</li>
+                  <li><code className="bg-background px-1 rounded">pdf-margin-top</code>, <code className="bg-background px-1 rounded">pdf-margin-right</code>, <code className="bg-background px-1 rounded">pdf-margin-bottom</code>, <code className="bg-background px-1 rounded">pdf-margin-left</code> - Margin values (e.g., "50px", "1in")</li>
+                  <li><code className="bg-background px-1 rounded">form-factor</code> - "desktop" or "mobile"</li>
+                  <li><code className="bg-background px-1 rounded">output-type</code> - "pdf" or "screenshot"</li>
+                  <li><code className="bg-background px-1 rounded">screenshot-type</code> - "png", "jpeg", or "webp"</li>
+                  <li><code className="bg-background px-1 rounded">screenshot-quality</code> - Number from 1-100</li>
+                  <li><code className="bg-background px-1 rounded">button-text</code> - Button label text</li>
+                  <li><code className="bg-background px-1 rounded">data</code> - JSON string for custom data to pass to API</li>
+                  <li><code className="bg-background px-1 rounded">button-css</code> - Custom CSS for the button</li>
+                  <li><code className="bg-background px-1 rounded">button-icon</code> - Icon URL or SVG</li>
+                  <li><code className="bg-background px-1 rounded">button-icon-position</code> - "left", "right", "top", or "bottom"</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Step 6: Publishing */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-2xl">6.</span>
               Publishing Your Site
             </CardTitle>
           </CardHeader>
