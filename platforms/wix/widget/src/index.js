@@ -31,7 +31,16 @@ class PdfGeneratorButton extends HTMLElement {
       'data',
       'button-css',
       'button-icon',
-      'button-icon-position'
+      'button-icon-position',
+      // design persistence fields (used by settings panel; optional for runtime)
+      'button-bg-color',
+      'button-text-color',
+      'button-font-size',
+      'button-border-radius',
+      'button-padding-x',
+      'button-padding-y',
+      'button-advanced-css-enabled',
+      'button-custom-css'
     ];
   }
 
@@ -97,7 +106,18 @@ class PdfGeneratorButton extends HTMLElement {
       data: this.parseData(),
       buttonCss: this.getAttribute('button-css') || '',
       buttonIcon: this.getAttribute('button-icon') || 'default',
-      buttonIconPosition: this.getAttribute('button-icon-position') || 'left'
+      buttonIconPosition: this.getAttribute('button-icon-position') || 'left',
+      // persisted design fields (passed through for settings panel reloads)
+      design: {
+        bgColor: this.getAttribute('button-bg-color') || '',
+        textColor: this.getAttribute('button-text-color') || '',
+        fontSize: this.getAttribute('button-font-size') || '',
+        borderRadius: this.getAttribute('button-border-radius') || '',
+        paddingX: this.getAttribute('button-padding-x') || '',
+        paddingY: this.getAttribute('button-padding-y') || '',
+        advancedCssEnabled: this.getAttribute('button-advanced-css-enabled') || 'false',
+        customCss: this.getAttribute('button-custom-css') || ''
+      }
     };
     
     console.log('[PDF Widget] Config updated with public API key:', this.config.publicApiKey ? 'Present' : 'Missing');

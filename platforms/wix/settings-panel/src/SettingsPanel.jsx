@@ -53,8 +53,10 @@ const SettingsPanel = () => {
     buttonTextColor: '#ffffff',
     buttonFontSize: '16px',
     buttonBorderRadius: '8px',
-    buttonPadding: '12px 24px',
+    buttonPaddingX: '24px',
+    buttonPaddingY: '12px',
     buttonCustomCss: '',
+    buttonAdvancedCssEnabled: false,
     dataParams: []
   });
   const [activeTab, setActiveTab] = useState('general');
@@ -80,7 +82,15 @@ const SettingsPanel = () => {
       buttonText: 'button-text',
       buttonCss: 'button-css',
       buttonIcon: 'button-icon',
-      buttonIconPosition: 'button-icon-position'
+      buttonIconPosition: 'button-icon-position',
+      buttonBgColor: 'button-bg-color',
+      buttonTextColor: 'button-text-color',
+      buttonFontSize: 'button-font-size',
+      buttonBorderRadius: 'button-border-radius',
+      buttonPaddingX: 'button-padding-x',
+      buttonPaddingY: 'button-padding-y',
+      buttonAdvancedCssEnabled: 'button-advanced-css-enabled',
+      buttonCustomCss: 'button-custom-css'
     };
     return mapping[fieldName] || fieldName;
   };
@@ -184,6 +194,14 @@ const SettingsPanel = () => {
           'button-css',
           'button-icon',
           'button-icon-position',
+          'button-bg-color',
+          'button-text-color',
+          'button-font-size',
+          'button-border-radius',
+          'button-padding-x',
+          'button-padding-y',
+          'button-advanced-css-enabled',
+          'button-custom-css',
           'data'
         ];
         
@@ -239,6 +257,22 @@ const SettingsPanel = () => {
               loadedSettings.buttonIcon = value || 'default';
             } else if (key === 'button-icon-position') {
               loadedSettings.buttonIconPosition = value || 'left';
+            } else if (key === 'button-bg-color') {
+              loadedSettings.buttonBgColor = value || '#116dff';
+            } else if (key === 'button-text-color') {
+              loadedSettings.buttonTextColor = value || '#ffffff';
+            } else if (key === 'button-font-size') {
+              loadedSettings.buttonFontSize = value || '16px';
+            } else if (key === 'button-border-radius') {
+              loadedSettings.buttonBorderRadius = value || '8px';
+            } else if (key === 'button-padding-x') {
+              loadedSettings.buttonPaddingX = value || '24px';
+            } else if (key === 'button-padding-y') {
+              loadedSettings.buttonPaddingY = value || '12px';
+            } else if (key === 'button-advanced-css-enabled') {
+              loadedSettings.buttonAdvancedCssEnabled = value === 'true';
+            } else if (key === 'button-custom-css') {
+              loadedSettings.buttonCustomCss = value || '';
             } else if (key === 'data') {
               // Parse data JSON string into dataParams array
               if (value) {
@@ -359,8 +393,11 @@ const SettingsPanel = () => {
     if (state.buttonTextColor) parts.push(`color: ${state.buttonTextColor};`);
     if (state.buttonFontSize) parts.push(`font-size: ${state.buttonFontSize};`);
     if (state.buttonBorderRadius) parts.push(`border-radius: ${state.buttonBorderRadius};`);
-    if (state.buttonPadding) parts.push(`padding: ${state.buttonPadding};`);
-    if (state.buttonCustomCss) parts.push(state.buttonCustomCss);
+    const padding = state.buttonPaddingY && state.buttonPaddingX
+      ? `${state.buttonPaddingY} ${state.buttonPaddingX}`
+      : '';
+    if (padding) parts.push(`padding: ${padding};`);
+    if (state.buttonAdvancedCssEnabled && state.buttonCustomCss) parts.push(state.buttonCustomCss);
 
     return parts.join(' ');
   }, []);
@@ -368,14 +405,25 @@ const SettingsPanel = () => {
   useEffect(() => {
     const css = buildButtonCss(settings);
     updateWidgetProperty('buttonCss', css, 300);
+    // Persist design inputs so the panel reloads with user selections
+    updateWidgetProperty('buttonBgColor', settings.buttonBgColor || '', 0);
+    updateWidgetProperty('buttonTextColor', settings.buttonTextColor || '', 0);
+    updateWidgetProperty('buttonFontSize', settings.buttonFontSize || '', 0);
+    updateWidgetProperty('buttonBorderRadius', settings.buttonBorderRadius || '', 0);
+    updateWidgetProperty('buttonPaddingX', settings.buttonPaddingX || '', 0);
+    updateWidgetProperty('buttonPaddingY', settings.buttonPaddingY || '', 0);
+    updateWidgetProperty('buttonAdvancedCssEnabled', String(!!settings.buttonAdvancedCssEnabled), 0);
+    updateWidgetProperty('buttonCustomCss', settings.buttonCustomCss || '', 0);
   }, [
     buildButtonCss,
     settings.buttonBgColor,
     settings.buttonTextColor,
     settings.buttonFontSize,
     settings.buttonBorderRadius,
-    settings.buttonPadding,
+    settings.buttonPaddingX,
+    settings.buttonPaddingY,
     settings.buttonCustomCss,
+    settings.buttonAdvancedCssEnabled,
     updateWidgetProperty
   ]);
 
@@ -886,19 +934,40 @@ const SettingsPanel = () => {
             </div>
             <div style={{ marginTop: '12px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#666' }}>Padding</label>
-              <input
-                type="text"
-                placeholder="12px 24px"
-                value={settings.buttonPadding}
-                onChange={(e) => handleDesignFieldChange('buttonPadding', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}
-              />
+              <div className="field-group">
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>Vertical</label>
+                  <input
+                    type="text"
+                    placeholder="12px"
+                    value={settings.buttonPaddingY}
+                    onChange={(e) => handleDesignFieldChange('buttonPaddingY', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>Horizontal</label>
+                  <input
+                    type="text"
+                    placeholder="24px"
+                    value={settings.buttonPaddingX}
+                    onChange={(e) => handleDesignFieldChange('buttonPaddingX', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -907,18 +976,29 @@ const SettingsPanel = () => {
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
               Additional CSS rules are appended to the generated styles. Keep selectors to button-level properties (e.g., <code>box-shadow</code>, <code>letter-spacing</code>).
             </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '14px', color: '#162d3d' }}>
+              <input
+                type="checkbox"
+                checked={settings.buttonAdvancedCssEnabled}
+                onChange={(e) => handleDesignFieldChange('buttonAdvancedCssEnabled', e.target.checked)}
+              />
+              Enable custom CSS overrides
+            </label>
             <textarea
               rows={4}
               placeholder="box-shadow: 0 4px 12px rgba(0,0,0,0.12);"
               value={settings.buttonCustomCss}
               onChange={(e) => handleDesignFieldChange('buttonCustomCss', e.target.value)}
+              disabled={!settings.buttonAdvancedCssEnabled}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 border: '1px solid #ddd',
                 borderRadius: '4px',
                 fontFamily: 'monospace',
-                fontSize: '13px'
+                fontSize: '13px',
+                backgroundColor: settings.buttonAdvancedCssEnabled ? 'white' : '#f5f5f5',
+                color: settings.buttonAdvancedCssEnabled ? '#111' : '#888'
               }}
             />
             <div className="css-preview">
