@@ -29,7 +29,9 @@ class PdfGeneratorButton extends HTMLElement {
       'button-text',
       'backend-url',
       'data',
-      'button-css'
+      'button-css',
+      'button-icon',
+      'button-icon-position'
     ];
   }
 
@@ -93,7 +95,9 @@ class PdfGeneratorButton extends HTMLElement {
       buttonText: this.getAttribute('button-text') || 'Generate PDF',
       backendUrl: this.getAttribute('backend-url') || undefined,
       data: this.parseData(),
-      buttonCss: this.getAttribute('button-css') || ''
+      buttonCss: this.getAttribute('button-css') || '',
+      buttonIcon: this.getAttribute('button-icon') || 'default',
+      buttonIconPosition: this.getAttribute('button-icon-position') || 'left'
     };
     
     console.log('[PDF Widget] Config updated with public API key:', this.config.publicApiKey ? 'Present' : 'Missing');
@@ -151,6 +155,7 @@ class PdfGeneratorButton extends HTMLElement {
   getStyles() {
     // Get custom button CSS from attribute (read directly to ensure it's current)
     const customButtonCss = this.getAttribute('button-css') || '';
+    const iconPosition = this.getAttribute('button-icon-position') || 'left';
     
     // Inline the CSS styles for shadow DOM
     return `
@@ -178,6 +183,8 @@ class PdfGeneratorButton extends HTMLElement {
         display: flex;
         align-items: center;
         gap: 8px;
+        flex-direction: ${['top', 'bottom'].includes(iconPosition) ? 'column' : iconPosition === 'right' ? 'row-reverse' : 'row'};
+        text-align: center;
       }
 
       .pdf-btn:hover:not(:disabled) {
@@ -213,6 +220,29 @@ class PdfGeneratorButton extends HTMLElement {
       .pdf-btn-icon {
         width: 18px;
         height: 18px;
+        flex-shrink: 0;
+      }
+
+      .pdf-btn-icon-img {
+        width: 18px;
+        height: 18px;
+        object-fit: contain;
+      }
+
+      .icon-pos-top {
+        flex-direction: column;
+      }
+
+      .icon-pos-bottom {
+        flex-direction: column-reverse;
+      }
+
+      .icon-pos-right {
+        flex-direction: row-reverse;
+      }
+
+      .icon-pos-left {
+        flex-direction: row;
       }
 
       .pdf-error {

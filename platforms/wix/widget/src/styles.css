@@ -17,6 +17,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-direction: row;
+  text-align: center;
 }
 
 .pdf-btn:hover:not(:disabled) {
@@ -52,6 +54,29 @@
 .pdf-btn-icon {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
+}
+
+.pdf-btn-icon-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.icon-pos-top {
+  flex-direction: column;
+}
+
+.icon-pos-bottom {
+  flex-direction: column-reverse;
+}
+
+.icon-pos-right {
+  flex-direction: row-reverse;
+}
+
+.icon-pos-left {
+  flex-direction: row;
 }
 
 .pdf-error {

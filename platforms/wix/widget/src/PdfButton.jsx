@@ -318,10 +318,45 @@ const PdfButton = ({ config }) => {
     URL.revokeObjectURL(url);
   };
 
+  const iconPosition = config.buttonIconPosition || 'left';
+  const iconSource = config.buttonIcon || 'default';
+  const shouldShowIcon = iconSource && iconSource !== 'none';
+  const iconFirst = iconPosition === 'left' || iconPosition === 'top';
+  const buttonClasses = ['pdf-btn', `icon-pos-${iconPosition}`].join(' ');
+
+  const renderIcon = () => {
+    if (!shouldShowIcon) return null;
+
+    const trimmed = iconSource.trim();
+
+    if (trimmed === 'default') {
+      return (
+        <svg className="pdf-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" focusable="false">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      );
+    }
+
+    // Inline SVG provided as string
+    if (trimmed.startsWith('<svg')) {
+      return (
+        <span
+          className="pdf-btn-icon"
+          aria-hidden="true"
+          focusable="false"
+          dangerouslySetInnerHTML={{ __html: trimmed }}
+        />
+      );
+    }
+
+    // Otherwise treat as URL
+    return <img className="pdf-btn-icon pdf-btn-icon-img" src={iconSource} alt="" aria-hidden="true" />;
+  };
+
   return (
     <div className="pdf-generator-button">
       <button
-        className="pdf-btn"
+        className={buttonClasses}
         onClick={generatePdf}
         disabled={loading}
       >
@@ -332,10 +367,9 @@ const PdfButton = ({ config }) => {
           </>
         ) : (
           <>
-            <svg className="pdf-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            {config.buttonText || 'Generate PDF'}
+            {iconFirst && renderIcon()}
+            <span>{config.buttonText || 'Generate PDF'}</span>
+            {!iconFirst && renderIcon()}
           </>
         )}
       </button>

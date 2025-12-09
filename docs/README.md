@@ -19,7 +19,7 @@ A comprehensive setup guide with step-by-step instructions for:
 - Installing the app from Wix App Market
 - Getting a DocuSkribe API key
 - Adding the widget to a Wix page
-- Configuring all widget settings
+- Configuring all widget settings, including the new Design tab (button text, colors, font size, border radius/padding, icon swap/hide, icon position)
 - Troubleshooting common issues
 - FAQ section
 
