@@ -66,8 +66,20 @@ app.use(async (req, res, next) => {
     else if (isPublicKeyRoute && origin) {
         const publicKey = req.headers['x-public-key'] || req.headers['X-Public-Key'];
         
-        if (publicKey) {
-            // Validate origin by checking public key's authorized domains
+        // For preflight requests (OPTIONS), check if origin is authorized for any public key
+        // (since preflight requests don't include custom headers like X-Public-Key)
+        if (req.method === 'OPTIONS') {
+            const { isOriginAuthorizedForAnyPublicKey } = require('./services/publicApiKeyService');
+            const isOriginAllowed = await isOriginAuthorizedForAnyPublicKey(origin);
+            
+            if (isOriginAllowed) {
+                res.header('Access-Control-Allow-Origin', origin);
+                res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key, X-Public-Key');
+                res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            }
+            // If origin not allowed, no CORS headers = browser blocks request
+        } else if (publicKey) {
+            // For actual requests, validate origin by checking public key's authorized domains
             const { validatePublicKeyOrigin } = require('./services/publicApiKeyService');
             const isOriginAllowed = await validatePublicKeyOrigin(publicKey.trim(), origin);
             
@@ -78,7 +90,7 @@ app.use(async (req, res, next) => {
             }
             // If origin not allowed, no CORS headers = browser blocks request
         }
-        // If no public key in headers, don't set CORS (will be handled by auth middleware)
+        // If no public key in headers for non-OPTIONS requests, don't set CORS (will be handled by auth middleware)
     } else if (isPublicAuthRoute || isStaticFile) {
         // Public auth routes and static files: allow CORS from any origin
         res.header('Access-Control-Allow-Origin', '*');

@@ -133,6 +133,38 @@ function isOriginAuthorized(origin, authorizedDomains) {
 }
 
 /**
+ * Check if an origin is authorized for any public key (for preflight CORS requests)
+ * This is used when we don't have the public key yet (e.g., OPTIONS preflight)
+ * @param {string} origin - The origin to validate
+ * @returns {Promise<boolean>} - True if origin is authorized for any public key
+ */
+const isOriginAuthorizedForAnyPublicKey = async (origin) => {
+    try {
+        if (!origin) {
+            return false;
+        }
+
+        // Query all enabled public keys to check if any authorize this origin
+        const { data: keys, error } = await supabase
+            .from('public_api_keys')
+            .select('authorized_domains')
+            .eq('enabled', true);
+        
+        if (error || !keys || keys.length === 0) {
+            return false;
+        }
+
+        // Check if origin matches any key's authorized domains
+        return keys.some(key => isOriginAuthorized(origin, key.authorized_domains || []));
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('Error checking origin for any public key:', error);
+        }
+        return false;
+    }
+};
+
+/**
  * Validate if an origin is allowed for a public key (for CORS middleware)
  * This is a lightweight check that doesn't do full authentication
  * @param {string} publicKey - The public API key
@@ -287,7 +319,7 @@ const validatePublicKey = async (publicKey, origin) => {
             } else {
                 console.error('  ❌ validatePublicKey: Error fetching public key:', keyError);
             }
-            setCachedValidation(trimmedKey, null, CACHE_TTL_FAILURE);
+            setCachedValidation(trimmedKey, null, 10000); // 10 seconds for failed validations
             return null;
         }
         
@@ -358,7 +390,7 @@ const validatePublicKey = async (publicKey, origin) => {
             ...keyData,
             tier: profileData.tier,
             key_name: keyData.name
-        }, CACHE_TTL_SUCCESS);
+        }, 45000); // 45 seconds for successful validations
         
         console.log('  💾 validatePublicKey: Result cached\n');
         return result;
@@ -474,6 +506,7 @@ module.exports = {
     createPublicKeyForUser,
     validatePublicKey,
     validatePublicKeyOrigin,
+    isOriginAuthorizedForAnyPublicKey,
     listPublicKeysForUser,
     updatePublicKey,
     deletePublicKey,
