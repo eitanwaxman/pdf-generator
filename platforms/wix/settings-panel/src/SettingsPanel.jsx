@@ -61,6 +61,7 @@ const SettingsPanel = () => {
   });
   const [activeTab, setActiveTab] = useState('general');
   const [isLoading, setIsLoading] = useState(true);
+  const [useCustomIcon, setUseCustomIcon] = useState(false);
 
   // Map React state field names to widget property keys (kebab-case)
   const getWidgetPropertyKey = (fieldName) => {
@@ -257,6 +258,10 @@ const SettingsPanel = () => {
               loadedSettings.buttonCustomCss = value || '';
             } else if (key === 'button-icon') {
               loadedSettings.buttonIcon = value || 'default';
+              // Set useCustomIcon based on loaded value
+              if (value && value !== 'default' && value !== 'none') {
+                setUseCustomIcon(true);
+              }
             } else if (key === 'button-icon-position') {
               loadedSettings.buttonIconPosition = value || 'left';
             } else if (key === 'button-bg-color') {
@@ -856,41 +861,136 @@ const SettingsPanel = () => {
 
           <div className="settings-section">
             <h3 className="settings-section-title">Button Icon</h3>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
-              Use <code>default</code> for the built-in icon, <code>none</code> to hide it, or paste a URL / inline <code>&lt;svg&gt;</code>.
-            </p>
-            <input
-              type="text"
-              placeholder="default, none, https://... or <svg>...</svg>"
-              value={settings.buttonIcon}
-              onChange={(e) => handleChange('buttonIcon', e.target.value, 300)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                fontSize: '14px',
-                marginBottom: '10px'
-              }}
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <button
-                type="button"
-                className="outline-btn"
-                onClick={() => handleChange('buttonIcon', 'default', 0)}
-              >
-                Use Default Icon
-              </button>
-              <button
-                type="button"
-                className="outline-btn"
-                onClick={() => handleChange('buttonIcon', 'none', 0)}
-              >
-                Hide Icon
-              </button>
+            
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: '12px',
+              padding: '12px',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '6px',
+              border: '1px solid #e9ecef'
+            }}>
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '14px', 
+                  fontWeight: 500,
+                  color: '#162d3d',
+                  marginBottom: '2px'
+                }}>
+                  Use Custom Icon
+                </label>
+                <p style={{ 
+                  fontSize: '12px', 
+                  color: '#666', 
+                  margin: 0
+                }}>
+                  {useCustomIcon ? 'Enter a custom icon URL or SVG' : 'Using default built-in icon'}
+                </p>
+              </div>
+              <label style={{
+                position: 'relative',
+                display: 'inline-block',
+                width: '48px',
+                height: '24px',
+                margin: 0,
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={useCustomIcon}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setUseCustomIcon(isChecked);
+                    if (!isChecked) {
+                      // When toggling off, set to default
+                      handleChange('buttonIcon', 'default', 0);
+                    } else {
+                      // When toggling on, if current is default, set to empty string for user input
+                      if (settings.buttonIcon === 'default' || settings.buttonIcon === 'none') {
+                        handleChange('buttonIcon', '', 300);
+                      }
+                    }
+                  }}
+                  style={{
+                    opacity: 0,
+                    width: 0,
+                    height: 0
+                  }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: useCustomIcon ? '#116dff' : '#ccc',
+                  borderRadius: '24px',
+                  transition: 'background-color 0.3s',
+                  cursor: 'pointer'
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    content: '""',
+                    height: '18px',
+                    width: '18px',
+                    left: '3px',
+                    bottom: '3px',
+                    backgroundColor: 'white',
+                    borderRadius: '50%',
+                    transition: 'transform 0.3s',
+                    transform: useCustomIcon ? 'translateX(24px)' : 'translateX(0)'
+                  }}></span>
+                </span>
+              </label>
             </div>
+
+            {useCustomIcon && (
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '6px', 
+                  fontSize: '14px', 
+                  color: '#666',
+                  fontWeight: 500
+                }}>
+                  Custom Icon (URL or SVG)
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://example.com/icon.svg or <svg>...</svg>"
+                  value={settings.buttonIcon === 'default' || settings.buttonIcon === 'none' ? '' : settings.buttonIcon}
+                  onChange={(e) => handleChange('buttonIcon', e.target.value, 300)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontFamily: 'monospace'
+                  }}
+                />
+                <p style={{ 
+                  fontSize: '12px', 
+                  color: '#999', 
+                  marginTop: '4px',
+                  marginBottom: 0
+                }}>
+                  Paste an image URL or inline SVG code. Leave empty or use <code>none</code> to hide icon.
+                </p>
+              </div>
+            )}
+
             <div style={{ marginTop: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#666' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '6px', 
+                fontSize: '14px', 
+                color: '#666',
+                fontWeight: 500
+              }}>
                 Icon Position
               </label>
               <select
@@ -904,10 +1004,10 @@ const SettingsPanel = () => {
                   fontSize: '14px'
                 }}
               >
-                <option value="left">Left of text</option>
-                <option value="right">Right of text</option>
-                <option value="top">Above text</option>
-                <option value="bottom">Below text</option>
+                <option value="left">← Left of text</option>
+                <option value="right">Right of text →</option>
+                <option value="top">↑ Above text</option>
+                <option value="bottom">↓ Below text</option>
               </select>
             </div>
           </div>

@@ -321,7 +321,9 @@ const PdfButton = ({ config }) => {
   const iconPosition = config.buttonIconPosition || 'left';
   const iconSource = config.buttonIcon || 'default';
   const shouldShowIcon = iconSource && iconSource !== 'none';
-  const iconFirst = iconPosition === 'left' || iconPosition === 'top';
+  // Fix: For "bottom", icon should render first in DOM so it appears below with column-reverse
+  // For "right", icon should render last in DOM so it appears on the right with row-reverse
+  const iconFirst = iconPosition === 'left' || iconPosition === 'top' || iconPosition === 'bottom';
   const buttonClasses = ['pdf-btn', `icon-pos-${iconPosition}`].join(' ');
 
   const renderIcon = () => {

@@ -2,8 +2,9 @@ import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
 import { Copy, Check, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
+import Footer from './Footer'
 
-export default function LandingView({ isLoggedIn, profile, onGetStarted, onViewDocs, onViewPlans, onViewWix, onGoToDashboard }) {
+export default function LandingView({ isLoggedIn, profile, onGetStarted, onViewDocs, onViewPlans, onViewWix, onGoToDashboard, onViewContact }) {
   const [copied, setCopied] = useState(false)
 
   const exampleCode = `curl -X POST https://api.yourdomain.com/api/v1/jobs \\
@@ -215,6 +216,8 @@ export default function LandingView({ isLoggedIn, profile, onGetStarted, onViewD
             </CardContent>
           </Card>
         </div>
+
+        <Footer onViewContact={onViewContact} />
       </div>
     </div>
   )

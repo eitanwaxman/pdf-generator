@@ -3,8 +3,9 @@ import { Button } from './ui/button'
 import { Alert, AlertDescription } from './ui/alert'
 import { Copy, Check, ExternalLink, Download, Settings, Key, CheckCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import Footer from './Footer'
 
-export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToDashboard }) {
+export default function WixDocsView({ isLoggedIn, profile, onGetStarted, onGoToDashboard, onViewContact }) {
   const [copied, setCopied] = useState({})
   const [isInstalledApp, setIsInstalledApp] = useState(false)
 
@@ -745,6 +746,7 @@ $w.onReady(function () {
             </Button>
           )}
         </div>
+        <Footer onViewContact={onViewContact} />
       </div>
     </div>
   )

@@ -1,8 +1,9 @@
 import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
 import { Check, Download, Settings, Zap, Shield, FileText, Smartphone, Monitor } from 'lucide-react'
+import Footer from './Footer'
 
-export default function WixLandingView({ isLoggedIn, profile, onGetStarted, onViewDocs, onGoToDashboard }) {
+export default function WixLandingView({ isLoggedIn, profile, onGetStarted, onViewDocs, onGoToDashboard, onViewContact }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -317,6 +318,7 @@ export default function WixLandingView({ isLoggedIn, profile, onGetStarted, onVi
             </Button>
           </div>
         </div>
+        <Footer onViewContact={onViewContact} />
       </div>
     </div>
   )

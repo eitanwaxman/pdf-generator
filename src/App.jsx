@@ -13,6 +13,8 @@ import { CheckCircle, XCircle } from 'lucide-react'
 import LandingView from './components/LandingView'
 import WixLandingView from './components/WixLandingView'
 import WixDocsView from './components/WixDocsView'
+import ContactView from './components/ContactView'
+import Footer from './components/Footer'
 import SEO from './components/SEO'
 import StructuredData, {
   generateOrganizationSchema,
@@ -37,6 +39,7 @@ function App() {
     if (pathname.startsWith('/settings')) return 'settings'
     if (pathname.startsWith('/widget')) return 'widget'
     if (pathname.startsWith('/auth')) return 'auth'
+    if (pathname.startsWith('/contact')) return 'contact'
     return 'landing'
   }
   const [activeTab, setActiveTab] = useState(() => {
@@ -197,6 +200,7 @@ function App() {
           plans: '/plans',
           settings: '/settings',
           widget: '/widget',
+          contact: '/contact',
         }
         const currentPath = tabToPath[activeTab] || '/'
         const currentPathname = window.location.pathname
@@ -234,6 +238,7 @@ function App() {
         settings: 'Settings',
         widget: 'Widget Configuration',
         auth: 'Authentication',
+        contact: 'Contact Us',
       }
       
       const title = pageTitles[activeTab] || 'Docuskribe'
@@ -415,6 +420,16 @@ function App() {
           noindex: false,
           nofollow: false,
         }
+      case 'contact':
+        return {
+          title: 'Contact Us - Docuskribe',
+          description: 'Get in touch with the Docuskribe team. Have questions or need help? We\'d love to hear from you.',
+          keywords: 'contact Docuskribe, support, help, customer service',
+          canonical: url,
+          ogImage: `${BASE_URL}/og-image.png`,
+          noindex: false,
+          nofollow: false,
+        }
       default:
         return {
           title: 'Docuskribe - Generate PDFs and Screenshots from URLs',
@@ -465,6 +480,13 @@ function App() {
             { name: 'Setup Guide', url: `${BASE_URL}/wix/docs` },
           ]),
         ]
+      case 'contact':
+        return [
+          generateBreadcrumbSchema([
+            { name: 'Home', url: BASE_URL },
+            { name: 'Contact Us', url: `${BASE_URL}/contact` },
+          ]),
+        ]
       default:
         return null
     }
@@ -488,6 +510,7 @@ function App() {
           onGetStarted={() => setActiveTab('auth')}
           onViewDocs={() => setActiveTab('wix-docs')}
           onGoToDashboard={() => setActiveTab('dashboard')}
+          onViewContact={() => setActiveTab('contact')}
         />
       </>
     )
@@ -513,9 +536,26 @@ function App() {
               profile={profile}
               onGetStarted={() => setActiveTab('auth')}
               onGoToDashboard={() => setActiveTab('dashboard')}
+              onViewContact={() => setActiveTab('contact')}
             />
+            <Footer onViewContact={() => setActiveTab('contact')} />
           </div>
         </div>
+      </>
+    )
+  }
+  
+  if (activeTab === 'contact') {
+    return (
+      <>
+        <SEO {...seoConfig} />
+        {structuredData && <StructuredData data={structuredData} />}
+        <ContactView 
+          isLoggedIn={isLoggedIn}
+          onGoToDashboard={() => setActiveTab('dashboard')}
+          onBackToHome={() => setActiveTab('landing')}
+          onViewContact={() => setActiveTab('contact')}
+        />
       </>
     )
   }
@@ -533,6 +573,7 @@ function App() {
           onViewPlans={() => isLoggedIn ? setActiveTab('plans') : setActiveTab('auth')}
           onViewWix={() => setActiveTab('wix')}
           onGoToDashboard={() => setActiveTab('dashboard')}
+          onViewContact={() => setActiveTab('contact')}
         />
       </>
     )
@@ -551,6 +592,7 @@ function App() {
                 <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to Home</Button>
               </div>
               <DocsView isLoggedIn={false} profile={null} onGetStarted={() => setActiveTab('auth')} onGoToWidget={() => setActiveTab('auth')} />
+              <Footer onViewContact={() => setActiveTab('contact')} />
             </div>
           ) : (
             <div className="container max-w-4xl mx-auto px-4 py-8">
@@ -558,6 +600,7 @@ function App() {
                 <Button variant="ghost" onClick={() => setActiveTab('landing')}>← Back to Home</Button>
               </div>
               <AuthView />
+              <Footer onViewContact={() => setActiveTab('contact')} />
             </div>
           )}
         </div>
@@ -692,6 +735,7 @@ function App() {
             />
           </TabsContent>
         </Tabs>
+        <Footer onViewContact={() => setActiveTab('contact')} />
       </div>
     </div>
     </>
