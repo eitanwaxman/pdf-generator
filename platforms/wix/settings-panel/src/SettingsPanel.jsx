@@ -60,6 +60,7 @@ const SettingsPanel = () => {
     dataParams: []
   });
   const [activeTab, setActiveTab] = useState('general');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Map React state field names to widget property keys (kebab-case)
   const getWidgetPropertyKey = (fieldName) => {
@@ -154,6 +155,7 @@ const SettingsPanel = () => {
     
     // Load current widget properties
     const loadWidgetProperties = async () => {
+      setIsLoading(true);
       try {
         console.log('[Settings Panel] Loading current widget properties...');
         
@@ -312,6 +314,8 @@ const SettingsPanel = () => {
         console.error('[Settings Panel] ❌ Failed to load widget properties:', error);
         console.error('[Settings Panel]   - Error message:', error.message);
         console.error('[Settings Panel]   - Error stack:', error.stack);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -429,6 +433,38 @@ const SettingsPanel = () => {
 
   const computedButtonCss = buildButtonCss(settings);
 
+
+  if (isLoading) {
+    return (
+      <div id="settings-root">
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '60px 20px',
+          color: '#666'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #e2e8f0',
+            borderTop: '4px solid #116dff',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '16px'
+          }}></div>
+          <div style={{ fontSize: '14px', fontWeight: 500 }}>Loading settings...</div>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div id="settings-root">
