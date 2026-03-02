@@ -40,11 +40,8 @@ let browser;
 async function exportWebsiteAsPdf(websiteUrl, options) {
     const { margin, free, delay, waitForDataLoad } = options || {};
 
-    const browser = await puppeteer.launch({
-        headless: 'new'
-    });
-
-    const page = await getBrowser();//browser.newPage();
+    const browser = await getBrowser();
+    const page = await browser.newPage();
 
     await page.goto(websiteUrl, { waitUntil: 'networkidle0', timeout: 0 });
 
@@ -80,7 +77,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     storeTemporaryUrl(pdfBuffer);
 
-    await browser.close();
+    await page.close();
 
     return pdfBuffer;
 }
