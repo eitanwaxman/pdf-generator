@@ -26,3 +26,6 @@ backup-*/
 
 # Ignore a specific directory and its contents
 build/
+
+# Puppeteer browser cache
+.cache/
