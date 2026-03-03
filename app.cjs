@@ -1,5 +1,3 @@
-//TODO - repond with a temp file url as well (option)
-
 const express = require('express');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
@@ -75,11 +73,11 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
         format: 'A4',
     });
 
-    storeTemporaryUrl(pdfBuffer);
+    const tempUrl = storeTemporaryUrl(pdfBuffer);
 
     await page.close();
 
-    return pdfBuffer;
+    return { tempUrl };
 }
 
 function addWatermark() {
@@ -118,7 +116,9 @@ function storeTemporaryUrl(pdfBuffer) {
     setTimeout(() => {
         fs.unlinkSync(filePath);
         console.log(`File ${filename} removed.`);
-    }, 60000);
+    }, 10*60*1000);
+
+    return fileUrl;
 }
 
 async function timeout(ms) {
