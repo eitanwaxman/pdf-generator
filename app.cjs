@@ -63,6 +63,8 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
 
     await page.emulateMediaType('screen');
 
+    await page.evaluate(removeCookieBanner);
+
     if (free) {
         await page.evaluate(addWatermark);
     }
@@ -78,6 +80,11 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     await page.close();
 
     return { tempUrl };
+}
+
+function removeCookieBanner() {
+    const cookieBanner = document.querySelector('.consent-banner-root');
+    if (cookieBanner) cookieBanner.remove();
 }
 
 function addWatermark() {
