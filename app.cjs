@@ -36,7 +36,7 @@ app.listen(port, () => {
 let browser;
 
 async function exportWebsiteAsPdf(websiteUrl, options) {
-    const { margin, free, delay, waitForDataLoad } = options || {};
+    const { margin, format, free, delay, waitForDataLoad } = options || {};
 
     const browser = await getBrowser();
     const page = await browser.newPage();
@@ -72,7 +72,7 @@ async function exportWebsiteAsPdf(websiteUrl, options) {
     const pdfBuffer = await page.pdf({
         margin: margin ? margin : { top: '100px', right: '50px', bottom: '100px', left: '50px' },
         printBackground: true,
-        format: 'A4',
+        format: format ? format : 'A4',
     });
 
     const tempUrl = storeTemporaryUrl(pdfBuffer);
