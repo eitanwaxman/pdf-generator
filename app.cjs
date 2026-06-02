@@ -205,7 +205,17 @@ function isValidUrl(url) {
 
 async function getBrowser() {
     if (!browser) {
-        log('info', 'Launching Puppeteer browser');
+        let resolvedPath;
+        try {
+            resolvedPath = puppeteer.executablePath();
+        } catch (error) {
+            resolvedPath = undefined;
+        }
+        log('info', 'Launching Puppeteer browser', {
+            executablePath: resolvedPath,
+            executableExists: resolvedPath ? fs.existsSync(resolvedPath) : false,
+            cacheDir: process.env.PUPPETEER_CACHE_DIR,
+        });
         try {
             browser = await puppeteer.launch({
                 headless: 'new',
