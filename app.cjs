@@ -207,7 +207,14 @@ async function getBrowser() {
     if (!browser) {
         log('info', 'Launching Puppeteer browser');
         try {
-            browser = await puppeteer.launch({ headless: 'new' });
+            browser = await puppeteer.launch({
+                headless: 'new',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                ],
+            });
             log('info', 'Puppeteer browser launched');
         } catch (error) {
             logError('Failed to launch Puppeteer browser', error);

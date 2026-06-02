@@ -4,6 +4,7 @@ const {join} = require('path');
  * @type {import("puppeteer").Configuration}
  */
 module.exports = {
-  // Changes the cache location for Puppeteer.
-  cacheDirectory: join(__dirname, '.cache', 'puppeteer'),
+  // Keep Chrome inside node_modules so Render's deploy artifact and build cache include it.
+  // A top-level `.cache/` directory is gitignored and may be omitted from the deploy bundle.
+  cacheDirectory: join(__dirname, 'node_modules', '.cache', 'puppeteer'),
 };
