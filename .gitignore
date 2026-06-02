@@ -27,6 +27,6 @@ backup-*/
 # Ignore a specific directory and its contents
 build/
 
-# Legacy Puppeteer browser cache (current cache lives under node_modules/.cache)
+# Puppeteer browser cache (local dev; Render uses /opt/render/project/.puppeteer)
 .cache/
 
