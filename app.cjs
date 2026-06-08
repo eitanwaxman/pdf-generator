@@ -138,8 +138,10 @@ async function exportWebsiteAsPdf(websiteUrl, options, requestId) {
 }
 
 function removeCookieBanner() {
-    const cookieBanner = document.querySelector('.consent-banner-root');
-    if (cookieBanner) cookieBanner.remove();
+    const selectors = ['.consent-banner-root', 'usercentrics-cmp-ui', '#usercentrics-cmp-ui'];
+    for (const selector of selectors) {
+        document.querySelectorAll(selector).forEach((el) => el.remove());
+    }
 }
 
 function addWatermark() {
