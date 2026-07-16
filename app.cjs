@@ -64,6 +64,38 @@ app.listen(port, () => {
 });
 
 let browser;
+let browserLaunchPromise;
+let exitHandlerRegistered = false;
+
+function isBrowserAlive(instance) {
+    return Boolean(instance?.connected);
+}
+
+function isConnectionClosedError(error) {
+    const name = error?.name || '';
+    const message = error?.message || '';
+    return (
+        name === 'ConnectionClosedError' ||
+        /connection closed/i.test(message) ||
+        /target closed/i.test(message) ||
+        /session closed/i.test(message) ||
+        /browser has been closed/i.test(message) ||
+        /failed to obtain a connected puppeteer browser/i.test(message)
+    );
+}
+
+async function resetBrowser() {
+    const stale = browser;
+    browser = null;
+    if (!stale) return;
+    try {
+        await stale.close();
+    } catch (error) {
+        log('debug', 'Failed to close stale browser during reset', {
+            errorMessage: error?.message,
+        });
+    }
+}
 
 async function exportWebsiteAsPdf(websiteUrl, options, requestId) {
     const { margin, format, free, delay, waitForDataLoad } = options || {};
@@ -77,8 +109,47 @@ async function exportWebsiteAsPdf(websiteUrl, options, requestId) {
         waitForDataLoad: Boolean(waitForDataLoad),
     });
 
-    const browser = await getBrowser();
-    const page = await browser.newPage();
+    const maxAttempts = 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            return await generatePdfOnce({
+                websiteUrl,
+                margin,
+                format,
+                free,
+                delay,
+                waitForDataLoad,
+                ctx,
+            });
+        } catch (error) {
+            const canRetry = attempt < maxAttempts && isConnectionClosedError(error);
+            if (!canRetry) {
+                logError('PDF export step failed', error, ctx);
+                throw error;
+            }
+
+            log('warn', 'Browser connection closed during PDF export; relaunching and retrying', {
+                ...ctx,
+                attempt,
+                errorMessage: error?.message,
+                errorName: error?.name,
+            });
+            await resetBrowser();
+        }
+    }
+}
+
+async function generatePdfOnce({
+    websiteUrl,
+    margin,
+    format,
+    free,
+    delay,
+    waitForDataLoad,
+    ctx,
+}) {
+    const activeBrowser = await getBrowser();
+    const page = await activeBrowser.newPage();
 
     try {
         log('debug', 'Navigating to URL', ctx);
@@ -125,15 +196,19 @@ async function exportWebsiteAsPdf(websiteUrl, options, requestId) {
 
         log('debug', 'PDF buffer created', { ...ctx, sizeBytes: pdfBuffer?.length });
 
-        const tempUrl = storeTemporaryUrl(pdfBuffer, requestId);
-
-        await page.close();
-        log('debug', 'Browser page closed', ctx);
-
-        return { tempUrl };
-    } catch (error) {
-        logError('PDF export step failed', error, ctx);
-        throw error;
+        return { tempUrl: storeTemporaryUrl(pdfBuffer, ctx.requestId) };
+    } finally {
+        try {
+            if (!page.isClosed()) {
+                await page.close();
+                log('debug', 'Browser page closed', ctx);
+            }
+        } catch (error) {
+            log('debug', 'Failed to close browser page', {
+                ...ctx,
+                errorMessage: error?.message,
+            });
+        }
     }
 }
 
@@ -206,42 +281,83 @@ function isValidUrl(url) {
 }
 
 async function getBrowser() {
-    if (!browser) {
-        let resolvedPath;
-        try {
-            resolvedPath = puppeteer.executablePath();
-        } catch (error) {
-            resolvedPath = undefined;
-        }
-        log('info', 'Launching Puppeteer browser', {
-            executablePath: resolvedPath,
-            executableExists: resolvedPath ? fs.existsSync(resolvedPath) : false,
-            cacheDir: process.env.PUPPETEER_CACHE_DIR,
+    if (isBrowserAlive(browser)) {
+        return browser;
+    }
+
+    if (browser && !browser.connected) {
+        log('warn', 'Cached Puppeteer browser is disconnected; clearing before relaunch');
+        browser = null;
+    }
+
+    if (!browserLaunchPromise) {
+        const launchPromise = launchBrowser().finally(() => {
+            if (browserLaunchPromise === launchPromise) {
+                browserLaunchPromise = null;
+            }
         });
-        try {
-            browser = await puppeteer.launch({
-                headless: 'new',
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                ],
-            });
-            log('info', 'Puppeteer browser launched');
-        } catch (error) {
-            logError('Failed to launch Puppeteer browser', error);
-            throw error;
+        browserLaunchPromise = launchPromise;
+    }
+
+    const launched = await browserLaunchPromise;
+    if (!isBrowserAlive(launched)) {
+        browser = null;
+        throw new Error('Failed to obtain a connected Puppeteer browser');
+    }
+
+    return launched;
+}
+
+async function launchBrowser() {
+    let resolvedPath;
+    try {
+        resolvedPath = puppeteer.executablePath();
+    } catch (error) {
+        resolvedPath = undefined;
+    }
+
+    log('info', 'Launching Puppeteer browser', {
+        executablePath: resolvedPath,
+        executableExists: resolvedPath ? fs.existsSync(resolvedPath) : false,
+        cacheDir: process.env.PUPPETEER_CACHE_DIR,
+    });
+
+    let launched;
+    try {
+        launched = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+            ],
+        });
+    } catch (error) {
+        logError('Failed to launch Puppeteer browser', error);
+        throw error;
+    }
+
+    browser = launched;
+    launched.on('disconnected', () => {
+        log('warn', 'Puppeteer browser disconnected');
+        if (browser === launched) {
+            browser = null;
         }
-        process.on('exit', async () => {
+    });
+
+    if (!exitHandlerRegistered) {
+        exitHandlerRegistered = true;
+        process.on('exit', () => {
             if (browser) {
                 try {
-                    await browser.close();
-                    log('debug', 'Puppeteer browser closed on process exit');
+                    browser.close();
                 } catch (error) {
-                    logError('Failed to close browser on process exit', error);
+                    // Best-effort cleanup on process exit.
                 }
             }
         });
     }
+
+    log('info', 'Puppeteer browser launched');
     return browser;
 }
